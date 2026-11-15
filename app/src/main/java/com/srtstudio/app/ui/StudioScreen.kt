@@ -439,7 +439,7 @@ private fun DoneCard(uri: Uri, note: String?, onDismiss: () -> Unit) {
         icon = Icons.Rounded.CheckCircle,
         trailing = { IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, "Dismiss") } },
     ) {
-        SmallLabel("Saved to Movies / SRT Studio")
+        SmallLabel("Saved to Downloads / Energy Studio")
         if (note != null) SmallLabel(note)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FilledTonalButton(onClick = {

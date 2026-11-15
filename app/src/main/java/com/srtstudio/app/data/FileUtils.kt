@@ -108,13 +108,13 @@ object FileUtils {
 
     private val CHUNK = Regex("(\\d+|\\D+)")
 
-    /** Copies a finished render into Movies/SRT Studio and returns its content Uri. */
+    /** Copies a finished render into Downloads/Energy Studio and returns its content Uri. */
     fun saveToMovies(ctx: Context, file: File): Uri {
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val values = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, "srt-studio-$stamp.mp4")
+            put(MediaStore.Video.Media.DISPLAY_NAME, "energy-studio-$stamp.mp4")
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/SRT Studio")
+            put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Energy Studio")
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
         val resolver = ctx.contentResolver

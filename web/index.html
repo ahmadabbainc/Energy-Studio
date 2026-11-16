@@ -185,7 +185,7 @@ async function recordVideo(){
   }
  }
  $('exportTitle').textContent='Preparing frame-accurate MP4…';
- const mb=await import('https://esm.sh/mediabunny@1.65.2');
+ const mb=await import('https://esm.sh/mediabunny@1.66.0');
  const {Output,Mp4OutputFormat,BufferTarget,StreamTarget,CanvasSource,AudioBufferSource,Quality,canEncodeAudio}=mb;
  const d=dimensions(),totalMs=Math.max(1,Math.round(dur)),totalFrames=Math.ceil(totalMs*fps/1000);
  const pixels=d.w*d.h,bitrate=Math.max(4500000,Math.min(16000000,Math.round(pixels*fps*.13)));

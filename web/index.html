@@ -196,10 +196,11 @@ async function recordVideo(){
    exportTempFileHandle=await exportDir.getFileHandle('energy-studio-export-'+Date.now()+'.mp4',{create:true});
    const exportWriter=await exportTempFileHandle.createWritable();
    target=new StreamTarget(exportWriter,{chunked:true,chunkSize:4*1024*1024});
-  }else target=new BufferTarget();
+  }else{if(totalMs>120000)throw new Error('This browser does not support disk-backed video export. Use the latest Chrome or Edge for videos longer than 2 minutes.');target=new BufferTarget()}
  }catch(storageError){
   console.warn('[Energy Studio] Disk streaming unavailable; falling back to memory output.',storageError);
   exportTempFileHandle=null;
+  if(totalMs>120000)throw new Error('Disk-backed export storage is unavailable. Update Chrome or Edge and try again.');
   target=new BufferTarget();
  }
  const videoSource=new CanvasSource(canvas,{codec:'avc',quality:new Quality({bitrate}),latencyMode:'realtime',hardwareAcceleration:'no-preference',keyFrameInterval:2});
@@ -222,9 +223,9 @@ async function recordVideo(){
   output.addAudioTrack(audioSource);
   state._exportAudioBuffer=clipped;
  }
- await output.start();
  state.rendering=true;
  try{
+  await output.start();
   // Write the smaller audio track first. This prevents the MP4 muxer from
   // retaining the entire long video in memory while it waits for audio packets.
   if(audioSource&&state._exportAudioBuffer){
@@ -248,7 +249,7 @@ async function recordVideo(){
    if(!file||!file.size)throw new Error('The MP4 encoder returned an empty file.');
    pendingExportTempHandle=exportTempFileHandle;
    setProgress(1);
-   return file;
+   return new File([file],file.name,{type:'video/mp4'});
   }
   const buffer=output.target.buffer;
   if(!buffer||!buffer.byteLength)throw new Error('The MP4 encoder returned an empty file.');

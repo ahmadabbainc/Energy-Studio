@@ -64,7 +64,7 @@
 .preview-panel.is-collapsed>.panel-body,.settings-panel.is-collapsed>.panel-body{display:none}.preview-panel.is-collapsed>.panel-head,.settings-panel.is-collapsed>.panel-head{border-bottom:0}.preview-panel>.panel-head,.settings-panel>.panel-head{cursor:pointer;user-select:none}
 @media(max-width:900px){.tool-layout{grid-template-columns:1fr}}
 .workspace-view .tool-card.panel-collapsible>.panel-heading{cursor:pointer;user-select:none}.workspace-view .tool-card.panel-collapsible>.panel-heading:focus-visible{outline:2px solid var(--accent,#ff9b52);outline-offset:4px}.workspace-view .tool-card.panel-collapsible.is-collapsed>.panel-content{display:none}.workspace-view .tool-card.panel-collapsible.is-collapsed>.panel-heading{margin-bottom:0}.workspace-view .tool-card.panel-collapsible>.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.workspace-view .tool-card.panel-collapsible>.panel-heading::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .18s ease;flex:0 0 auto}.workspace-view .tool-card.panel-collapsible.is-collapsed>.panel-heading::after{transform:rotate(-45deg)}@media(max-width:780px){.split-method-card>.split-method-head{cursor:pointer;user-select:none}.split-method-card.is-collapsed>*:not(.split-method-head){display:none}.split-method-card.is-collapsed>.split-method-head{margin-bottom:0}.app-drawer{padding:18px}.tool-hero h1{font-size:22px}.tool-layout{grid-template-columns:1fr}.split-preview-wrap{min-height:220px}.split-options{grid-template-columns:1fr 1fr}}
-</style><script type="importmap">{"imports":{"mediabunny":"https://esm.sh/mediabunny@1.65.2"}}</script></head>
+</style><script type="importmap">{"imports":{"mediabunny":"https://esm.sh/mediabunny@1.66.0"}}</script></head>
 <body>
 <header class="energy-header"><div class="brand"><div class="brandmark"><img src="energy-studio-helmet.jpg" alt="Energy Studio armored face"></div><div class="brand-copy"><span class="brand-name">ENERGY STUDIO</span><small>LIMITED EDITION</small></div></div><div class="header-right"><span class="local-tag">● LOCAL PROCESSING</span><button id="menuBtn" class="menu-btn" aria-label="Open studio menu" aria-expanded="false"><span></span></button></div></header><div id="navBackdrop" class="nav-backdrop"></div><aside id="appDrawer" class="app-drawer" aria-label="Studio navigation"><div class="drawer-top"><div class="drawer-title">ENERGY STUDIO</div><button id="drawerClose" class="drawer-close" aria-label="Close menu">×</button></div><button class="nav-item active" data-view="videoWorkspace"><span class="nav-icon">▶</span><span><strong>Video Studio</strong><small>Build caption-synced videos</small></span></button><button class="nav-item" data-view="transcriberWorkspace"><span class="nav-icon">♫</span><span><strong>Audio Transcriber</strong><small>Audio to timed SRT subtitles</small></span></button><button class="nav-item" data-view="splitterWorkspace"><span class="nav-icon">▦</span><span><strong>Image Splitter</strong><small>Split image folders into tiles</small></span></button><div class="drawer-foot">ONE WORKSPACE · THREE CREATIVE TOOLS<br>Local image processing. Audio is sent only to the transcription provider you select.</div></aside>
 <main><div id="videoWorkspace" class="workspace-view active"><div class="topline"><div><h1>Video workspace</h1><p>Build a caption-synced video from your SRT, images and audio — directly in your browser.</p></div><div class="time-readout" id="projectDuration">No project loaded</div></div>
@@ -169,8 +169,8 @@ $('deleteCueBtn').addEventListener('click',()=>{if(state.selected<0)return;state
 $('fontSize').addEventListener('input',e=>{$('fontValue').textContent=e.target.value;syncPreview()});
 ['aspect','resolution','position','captionStyle','captionColor','kenBurns','scrim','mapping','crossfade'].forEach(id=>$(id).addEventListener('change',()=>{if(id==='aspect'||id==='resolution')resizeCanvas();else syncPreview()}));
 function stampSrt(ms){const h=Math.floor(ms/3600000),m=Math.floor(ms/60000)%60,s=Math.floor(ms/1000)%60,x=Math.floor(ms%1000);return pad(h)+':'+pad(m)+':'+pad(s)+','+String(x).padStart(3,'0')}
-let energyFolderHandle=null;
-function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000)}
+let energyFolderHandle=null,pendingExportTempHandle=null;
+function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);if(pendingExportTempHandle){const h=pendingExportTempHandle;pendingExportTempHandle=null;setTimeout(async()=>{try{await(await navigator.storage.getDirectory()).removeEntry(h.name)}catch{}},60000)}}
 $('exportSrtBtn').addEventListener('click',()=>{if(!state.cues.length){setStatus('Import or create captions first.','error');return}const txt=state.cues.map((c,i)=>(i+1)+'\n'+stampSrt(c.startMs)+' --> '+stampSrt(c.endMs)+'\n'+c.text).join('\n\n')+'\n';download(new Blob([txt],{type:'text/plain;charset=utf-8'}),'edited-captions.srt')});
 async function recordVideo(){
  const fps=+$('fps').value;
@@ -186,10 +186,22 @@ async function recordVideo(){
  }
  $('exportTitle').textContent='Preparing frame-accurate MP4…';
  const mb=await import('https://esm.sh/mediabunny@1.65.2');
- const {Output,Mp4OutputFormat,BufferTarget,CanvasSource,AudioBufferSource,Quality,canEncodeAudio}=mb;
+ const {Output,Mp4OutputFormat,BufferTarget,StreamTarget,CanvasSource,AudioBufferSource,Quality,canEncodeAudio}=mb;
  const d=dimensions(),totalMs=Math.max(1,Math.round(dur)),totalFrames=Math.ceil(totalMs*fps/1000);
  const pixels=d.w*d.h,bitrate=Math.max(4500000,Math.min(16000000,Math.round(pixels*fps*.13)));
- const target=new BufferTarget();
+ let target,exportTempFileHandle=null;
+ try{
+  if(navigator.storage&&typeof navigator.storage.getDirectory==='function'){
+   const exportDir=await navigator.storage.getDirectory();
+   exportTempFileHandle=await exportDir.getFileHandle('energy-studio-export-'+Date.now()+'.mp4',{create:true});
+   const exportWriter=await exportTempFileHandle.createWritable();
+   target=new StreamTarget(exportWriter,{chunked:true,chunkSize:4*1024*1024});
+  }else target=new BufferTarget();
+ }catch(storageError){
+  console.warn('[Energy Studio] Disk streaming unavailable; falling back to memory output.',storageError);
+  exportTempFileHandle=null;
+  target=new BufferTarget();
+ }
  const videoSource=new CanvasSource(canvas,{codec:'avc',quality:new Quality({bitrate}),latencyMode:'realtime',hardwareAcceleration:'no-preference',keyFrameInterval:2});
  const output=new Output({format:new Mp4OutputFormat(),target});
  output.addVideoTrack(videoSource,{frameRate:fps});
@@ -202,7 +214,7 @@ async function recordVideo(){
   for(let ch=0;ch<decoded.numberOfChannels;ch++)clipped.copyToChannel(decoded.getChannelData(ch).subarray(0,maxLength),ch);
   if(!(await canEncodeAudio('aac',{numberOfChannels:decoded.numberOfChannels,sampleRate:decoded.sampleRate,quality:new Quality({bitrate:192000})}))){
    try{
-    const ext=await import('https://esm.sh/@mediabunny/aac-encoder@1.65.2?external=mediabunny');
+    const ext=await import('https://esm.sh/@mediabunny/aac-encoder@1.66.0?external=mediabunny');
     ext.registerAacEncoder();
    }catch(e){throw new Error('AAC audio encoding is unavailable in this browser. Update Chrome or Edge and try again.')}
   }
@@ -213,6 +225,12 @@ async function recordVideo(){
  await output.start();
  state.rendering=true;
  try{
+  // Write the smaller audio track first. This prevents the MP4 muxer from
+  // retaining the entire long video in memory while it waits for audio packets.
+  if(audioSource&&state._exportAudioBuffer){
+   await audioSource.add(state._exportAudioBuffer);
+   audioSource.close();
+  }
   for(let i=0;i<totalFrames;i++){
    const tMs=Math.min(totalMs-1,i*1000/fps);
    drawFrame(tMs);
@@ -224,17 +242,23 @@ async function recordVideo(){
    }
   }
   videoSource.close();
-  if(audioSource&&state._exportAudioBuffer){
-   await audioSource.add(state._exportAudioBuffer);
-   audioSource.close();
-  }
   await output.finalize();
+  if(exportTempFileHandle){
+   const file=await exportTempFileHandle.getFile();
+   if(!file||!file.size)throw new Error('The MP4 encoder returned an empty file.');
+   pendingExportTempHandle=exportTempFileHandle;
+   setProgress(1);
+   return file;
+  }
   const buffer=output.target.buffer;
   if(!buffer||!buffer.byteLength)throw new Error('The MP4 encoder returned an empty file.');
   setProgress(1);
   return new Blob([buffer],{type:'video/mp4'});
  }catch(err){
   try{await output.cancel()}catch{}
+  if(exportTempFileHandle){
+   try{await(await navigator.storage.getDirectory()).removeEntry(exportTempFileHandle.name)}catch{}
+  }
   throw err;
  }finally{
   delete state._exportAudioBuffer;

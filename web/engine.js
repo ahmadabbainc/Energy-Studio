@@ -312,6 +312,31 @@
       stamp(c.start, '.') + ' --> ' + stamp(c.end, '.') + '\n' + c.text + '\n').join('\n');
   }
 
+  // Combines very short sentence cues into natural, longer caption blocks.
+  // It preserves original word timing and punctuation, and avoids large captions.
+  function groupShortSentenceCues(cues, minDuration = 2.5, maxDuration = 8.5, maxChars = 110, maxGap = 0.8) {
+    const grouped = [];
+    for (const cue of cues) {
+      const previous = grouped[grouped.length - 1];
+      if (previous) {
+        const previousDuration = previous.end - previous.start;
+        const currentDuration = cue.end - cue.start;
+        const combinedDuration = cue.end - previous.start;
+        const combinedText = previous.text + ' ' + cue.text;
+        const gap = cue.start - previous.end;
+        const hasShortCue = previousDuration < minDuration || currentDuration < minDuration;
+        if (hasShortCue && gap <= maxGap && gap >= -0.001 &&
+            combinedDuration <= maxDuration && combinedText.length <= maxChars) {
+          previous.end = cue.end;
+          previous.text = combinedText;
+          continue;
+        }
+      }
+      grouped.push({ ...cue });
+    }
+    return grouped;
+  }
+
   // Builds every requested text format from the clean word list.
   function buildTexts(kept, formats, lang, maxChars, maxDur) {
     const joiner = NO_SPACE.has(lang) ? '' : ' ';
@@ -320,7 +345,8 @@
 
     if (formats.includes('TXT')) texts['TXT'] = kept.map(w => w.text).join(joiner).trim();
     if (formats.includes('Sentence SRT')) {
-      texts['Sentence SRT'] = toSrt(tidy(buildCues(kept, 'sentence', joiner), 0.4));
+      const sentenceCues = buildCues(kept, 'sentence', joiner);
+      texts['Sentence SRT'] = toSrt(tidy(groupShortSentenceCues(sentenceCues), 0.4));
     }
     if (formats.includes('Subtitle SRT') || formats.includes('VTT')) {
       sub = tidy(buildCues(kept, 'subtitle', joiner, maxChars, maxDur), 0.4);

@@ -91,6 +91,7 @@
 <div class="setting"><label>Caption colour</label><select class="field" id="captionColor"><option value="#ffffff">White</option><option value="#ffe36e">Yellow</option><option value="#7de6ff">Cyan</option><option value="#ff9d65">Orange</option><option value="#a8ff9e">Green</option></select></div>
 <div class="setting"><label>Text size <span id="fontValue">30</span></label><input id="fontSize" type="range" min="28" max="76" value="30"><small>Adjust to fit your captions.</small></div>
 <div class="setting"><label>Image motion</label><label class="checkline"><input type="checkbox" id="kenBurns" checked> Ken Burns slow zoom</label><label class="checkline"><input type="checkbox" id="scrim" checked> Dark readability gradient</label></div>
+<div class="setting"><label>Sound effects</label><label class="checkline"><input type="checkbox" id="clipChangeSound"> Clip change sound</label><small>Play a subtle cinematic whoosh when each new image appears. Included in preview and exported video.</small></div>
 <div class="setting"><label>Crossfade (ms)</label><input class="field" id="crossfade" type="number" min="0" max="2000" step="50" value="0"></div>
 </div></div></section></div>
 <div class="bottom-bar"><div class="bottom-left"><strong id="exportTitle">Ready when you are.</strong><div id="exportHint">Import an SRT, add images and audio, then download your video.</div><div class="progress" id="progress"><div id="progressFill"></div></div><div class="status" id="status"></div></div><div class="bottom-actions"><button id="exportSrtBtn">Download edited SRT</button><button id="exportBtn" class="primary">Export MP4 video ↗</button></div></div></div>
@@ -143,6 +144,12 @@ function checkOverlaps(){let n=0;for(let i=1;i<state.cues.length;i++)if(state.cu
 function setTime(ms){state.time=Math.max(0,Math.min(state.duration,ms));if(audio.src&&Math.abs(audio.currentTime-state.time/1000)>.12)audio.currentTime=state.time/1000;syncPreview()}
 function syncPreview(){drawFrame(state.time);$('scrub').value=state.time;$('clock').textContent=stamp(state.time)+' / '+stamp(state.duration);const i=activeIndex(state.time);$('activeCueLabel').textContent=i>=0?'Caption '+(i+1)+' / '+state.cues.length:'No active caption';document.querySelectorAll('.cue').forEach(x=>x.classList.toggle('active',+x.dataset.i===i||+x.dataset.i===state.selected))}
 function imageIndex(t,ci){if(!state.images.length)return-1;if($('mapping').value==='cue'){let idx=ci;if(idx<0){idx=state.cues.findIndex(c=>c.startMs>t);idx=idx<0?state.cues.length-1:idx-1}return Math.min(state.images.length-1,Math.max(0,idx))}return Math.min(state.images.length-1,Math.floor(t/Math.max(1,state.duration)*state.images.length))}
+function getClipChangeTimes(){if(state.images.length<2)return[];const times=[];if($('mapping').value==='spread'){for(let i=1;i<state.images.length;i++)times.push(state.duration*i/state.images.length)}else{for(let i=1;i<Math.min(state.images.length,state.cues.length);i++)times.push(state.cues[i].startMs)}return times.filter((t,i)=>t>0&&t<state.duration&&times.indexOf(t)===i)}
+function createWhooshSamples(sampleRate){const length=Math.max(1,Math.floor(sampleRate*.38)),samples=new Float32Array(length);let low=0,phase=0,seed=0x51f15e;for(let i=0;i<length;i++){const p=i/Math.max(1,length-1);seed=(seed*1664525+1013904223)>>>0;const white=(seed/4294967296)*2-1;low+=.075*(white-low);const airy=white-low;phase+=2*Math.PI*(165-90*p)/sampleRate;const envelope=Math.pow(Math.max(0,Math.sin(Math.PI*p)),1.45);samples[i]=(airy*.72+Math.sin(phase)*.28)*envelope*.15}return samples}
+let previewSfxContext=null,previewSfxBuffer=null;
+function ensurePreviewSfx(){if(!previewSfxContext){const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)return null;previewSfxContext=new AudioContextClass();previewSfxBuffer=previewSfxContext.createBuffer(1,Math.floor(previewSfxContext.sampleRate*.38),previewSfxContext.sampleRate);previewSfxBuffer.copyToChannel(createWhooshSamples(previewSfxContext.sampleRate),0)}return previewSfxContext}
+function playClipChangeSound(){if(!previewSfxContext||!previewSfxBuffer||previewSfxContext.state!=='running')return;const source=previewSfxContext.createBufferSource(),gain=previewSfxContext.createGain();source.buffer=previewSfxBuffer;gain.gain.value=.85;source.connect(gain);gain.connect(previewSfxContext.destination);source.start()}
+function mixClipChangeSounds(buffer,times){if(!buffer||!times.length)return buffer;const effect=createWhooshSamples(buffer.sampleRate);for(const time of times){const start=Math.round(time/1000*buffer.sampleRate);for(let ch=0;ch<buffer.numberOfChannels;ch++){const channel=buffer.getChannelData(ch);for(let i=0;i<effect.length&&start+i<channel.length;i++){const original=channel[start+i];let add=effect[i]*.85;if(Math.abs(original)>.90)add*=Math.max(0,Math.min(1,(.985-Math.abs(original))/.085));channel[start+i]=Math.max(-1,Math.min(1,original+add))}}}return buffer}
 function drawCover(img,scale=1,alpha=1){if(!img||!img.complete||!img.naturalWidth)return;const w=canvas.width,h=canvas.height,iw0=img.naturalWidth,ih0=img.naturalHeight,s=Math.max(w/iw0,h/ih0)*scale,iw=iw0*s,ih=ih0*s;ctx.save();ctx.globalAlpha=alpha;ctx.drawImage(img,(w-iw)/2,(h-ih)/2,iw,ih);ctx.restore()}
 function wrapLines(text,maxWidth,font){ctx.font=font;const out=[];String(text).split('\n').forEach(p=>{let line='';p.split(/\s+/).forEach(word=>{const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxWidth&&line){out.push(line);line=word}else line=test});out.push(line)});return out}
 function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
@@ -153,8 +160,8 @@ function drawFrame(t){const w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h
 function dimensions(){const r=+$('resolution').value,a=$('aspect').value;if(a==='landscape')return{w:r===1080?1920:1280,h:r};if(a==='square')return{w:r,h:r};return{w:r,h:Math.round(r*16/9)}}
 function resizeCanvas(){const d=dimensions();canvas.width=d.w;canvas.height=d.h;$('canvasShell').style.aspectRatio=d.w+'/'+d.h;rebuildGradients();captionCache.clear();syncPreview()}
 function stopPlayback(){state.playing=false;cancelAnimationFrame(state.raf);$('playBtn').textContent='▶ Play';if(!audio.paused)audio.pause()}
-function tick(){if(!state.playing)return;state.time=audio.src&&!audio.ended?audio.currentTime*1000:state.playOffset+(performance.now()-state.playStart);if(state.time>=state.duration){state.time=state.duration;stopPlayback()}syncPreview();if(state.playing)state.raf=requestAnimationFrame(tick)}
-function togglePlay(){if(state.playing){state.playOffset=state.time;stopPlayback();return}if(!state.duration)return;if(state.time>=state.duration)state.time=0;state.playing=true;state.playOffset=state.time;state.playStart=performance.now();$('playBtn').textContent='Ⅱ Pause';if(audio.src){audio.currentTime=state.time/1000;audio.play().catch(()=>{})}state.raf=requestAnimationFrame(tick)}
+function tick(){if(!state.playing)return;state.time=audio.src&&!audio.ended?audio.currentTime*1000:state.playOffset+(performance.now()-state.playStart);const currentImage=imageIndex(state.time,activeIndex(state.time));if(currentImage!==state._lastPreviewImageIndex){if(state._lastPreviewImageIndex>=0&&$('clipChangeSound').checked)playClipChangeSound();state._lastPreviewImageIndex=currentImage}if(state.time>=state.duration){state.time=state.duration;stopPlayback()}syncPreview();if(state.playing)state.raf=requestAnimationFrame(tick)}
+function togglePlay(){if(state.playing){state.playOffset=state.time;stopPlayback();return}if(!state.duration)return;if(state.time>=state.duration)state.time=0;state._lastPreviewImageIndex=imageIndex(state.time,activeIndex(state.time));if($('clipChangeSound').checked){const sfxContext=ensurePreviewSfx();if(sfxContext&&sfxContext.state==='suspended')sfxContext.resume().catch(()=>{})}state.playing=true;state.playOffset=state.time;state.playStart=performance.now();$('playBtn').textContent='Ⅱ Pause';if(audio.src){audio.currentTime=state.time/1000;audio.play().catch(()=>{})}state.raf=requestAnimationFrame(tick)}
 document.querySelectorAll('.collapsible-panel').forEach(panel=>{const head=panel.querySelector('.panel-head');const alwaysToggle=panel.classList.contains('preview-panel')||panel.classList.contains('settings-panel');const toggle=()=>{if(alwaysToggle||window.matchMedia('(max-width: 780px)').matches){const closed=panel.classList.toggle('is-collapsed');head.setAttribute('aria-expanded',String(!closed))}};head.addEventListener('click',e=>{if(e.target.closest('button'))return;toggle()});head.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&(alwaysToggle||window.matchMedia('(max-width: 780px)').matches)){e.preventDefault();toggle()}})});
 $('playBtn').addEventListener('click',togglePlay);$('scrub').addEventListener('input',e=>{stopPlayback();setTime(+e.target.value)});audio.addEventListener('loadedmetadata',()=>{refreshDuration();syncPreview()});audio.addEventListener('ended',stopPlayback);
 $('srtInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{state.cues=parseSrt(await f.text());state.selected=-1;state.time=0;$('srtLabel').textContent=f.name;$('assetStatus').textContent='Loaded '+state.cues.length+' captions from '+f.name;renderCueList();syncPreview();setStatus(state.cues.length?'Imported '+state.cues.length+' captions.':'No valid subtitle cues found.',state.cues.length?'success':'error')}catch(err){setStatus('Could not read that SRT file.','error')}});
@@ -168,6 +175,7 @@ $('deleteCueBtn').addEventListener('click',()=>{if(state.selected<0)return;state
 
 $('fontSize').addEventListener('input',e=>{$('fontValue').textContent=e.target.value;syncPreview()});
 ['aspect','resolution','position','captionStyle','captionColor','kenBurns','scrim','mapping','crossfade'].forEach(id=>$(id).addEventListener('change',()=>{if(id==='aspect'||id==='resolution')resizeCanvas();else syncPreview()}));
+$('clipChangeSound').addEventListener('change',()=>{state._lastPreviewImageIndex=imageIndex(state.time,activeIndex(state.time));if($('clipChangeSound').checked&&state.playing){const sfxContext=ensurePreviewSfx();if(sfxContext&&sfxContext.state==='suspended')sfxContext.resume().catch(()=>{})}});
 function stampSrt(ms){const h=Math.floor(ms/3600000),m=Math.floor(ms/60000)%60,s=Math.floor(ms/1000)%60,x=Math.floor(ms%1000);return pad(h)+':'+pad(m)+':'+pad(s)+','+String(x).padStart(3,'0')}
 let energyFolderHandle=null,pendingExportTempHandle=null;
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);if(pendingExportTempHandle){const h=pendingExportTempHandle;pendingExportTempHandle=null;setTimeout(async()=>{try{await(await navigator.storage.getDirectory()).removeEntry(h.name)}catch{}},60000)}}
@@ -207,13 +215,21 @@ async function recordVideo(){
  const output=new Output({format:new Mp4OutputFormat(),target});
  output.addVideoTrack(videoSource,{frameRate:fps});
  let audioSource=null,audioContext=null;
- if(state.audioFile){
+ const clipSoundTimes=$('clipChangeSound').checked?getClipChangeTimes():[];
+ if(state.audioFile||clipSoundTimes.length){
   audioContext=new (window.AudioContext||window.webkitAudioContext)();
-  const decoded=await audioContext.decodeAudioData(await state.audioFile.arrayBuffer());
-  const maxLength=Math.min(decoded.length,Math.ceil(totalMs/1000*decoded.sampleRate));
-  const clipped=audioContext.createBuffer(decoded.numberOfChannels,maxLength,decoded.sampleRate);
-  for(let ch=0;ch<decoded.numberOfChannels;ch++)clipped.copyToChannel(decoded.getChannelData(ch).subarray(0,maxLength),ch);
-  if(!(await canEncodeAudio('aac',{numberOfChannels:decoded.numberOfChannels,sampleRate:decoded.sampleRate,quality:new Quality({bitrate:192000})}))){
+  let clipped;
+  if(state.audioFile){
+   const decoded=await audioContext.decodeAudioData(await state.audioFile.arrayBuffer());
+   const maxLength=Math.min(decoded.length,Math.ceil(totalMs/1000*decoded.sampleRate));
+   clipped=audioContext.createBuffer(decoded.numberOfChannels,maxLength,decoded.sampleRate);
+   for(let ch=0;ch<decoded.numberOfChannels;ch++)clipped.copyToChannel(decoded.getChannelData(ch).subarray(0,maxLength),ch);
+  }else{
+   const sampleRate=audioContext.sampleRate;
+   clipped=audioContext.createBuffer(2,Math.max(1,Math.ceil(totalMs/1000*sampleRate)),sampleRate);
+  }
+  if(clipSoundTimes.length)mixClipChangeSounds(clipped,clipSoundTimes);
+  if(!(await canEncodeAudio('aac',{numberOfChannels:clipped.numberOfChannels,sampleRate:clipped.sampleRate,quality:new Quality({bitrate:192000})}))){
    try{
     const ext=await import('https://esm.sh/@mediabunny/aac-encoder@1.66.0?external=mediabunny');
     ext.registerAacEncoder();

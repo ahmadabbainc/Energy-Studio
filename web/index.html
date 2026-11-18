@@ -187,46 +187,47 @@ function selectLocalHighlights(){
  return chosen;
 }
 async function selectAiHighlights(){
- const key=$('geminiKey').value.trim();
- if(!key)throw new Error('Add your Google AI Studio API key in Video Settings to create the AI Short.');
  const transcript=state.cues.map(c=>({start:Number((c.startMs/1000).toFixed(2)),end:Number((c.endMs/1000).toFixed(2)),text:c.text})).filter(c=>c.text);
  if(!transcript.length)throw new Error('No subtitle transcript is available for highlight selection.');
+ const key=$('geminiKey').value.trim();
+ const useLocal=()=>{setStatus('Selecting the strongest moments directly from your SRT…');$('exportTitle').textContent='Finding the best moments in your SRT…';return selectLocalHighlights()};
+ if(!key)return useLocal();
  const duration=state.duration/1000;
  const prompt='You are an expert short-form video editor. Select the strongest chronological moments from this complete transcript to create ONE compelling vertical short. Choose a strong opening hook, meaningful context, the most interesting facts/drama, and a satisfying payoff. Do not invent words or select empty gaps. Choose 3 to 8 timestamp ranges from the transcript. Keep ranges chronological and non-overlapping. Total selected duration must be between 35 and 60 seconds (or use all available content if the transcript is shorter). Each range should include complete sentences where practical. Return ONLY JSON: {"segments":[{"start":number,"end":number,"reason":"brief reason"}]}. Times are seconds from the original video. Video duration: '+duration.toFixed(2)+' seconds. Transcript JSON: '+JSON.stringify(transcript);
  async function requestGeminiModel(model){
   const retryable=new Set([429,500,502,503,504]);let lastError='';
-  for(let attempt=0;attempt<1;attempt++){
-   if(attempt){const wait=3000+attempt*4000;setStatus('Gemini is busy. Retrying '+model+' in '+Math.round(wait/1000)+' seconds…');$('exportTitle').textContent='Retrying AI highlight analysis…';await new Promise(resolve=>setTimeout(resolve,wait))}
-   let response,payload;
-   const controller=new AbortController();let timeoutId;try{response=await Promise.race([fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},signal:controller.signal,body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})}),new Promise((_,reject)=>{timeoutId=setTimeout(()=>{controller.abort();reject(new Error('Google Gemini did not respond within 25 seconds.'))},25000)})])}catch(err){lastError=err?.message||'Could not connect to Google Gemini.';continue}finally{clearTimeout(timeoutId)}
-   try{payload=await response.json()}catch{lastError='Google Gemini returned an unreadable response ('+response.status+').';if(retryable.has(response.status))continue;throw new Error(lastError)}
-   if(response.ok)return payload;
-   const detail=payload?.error?.message||'Request rejected';
-   if(!retryable.has(response.status)){if(response.status===400||response.status===403)throw new Error('Google Gemini rejected the API key or request ('+response.status+'): '+detail);throw new Error('Gemini highlight analysis failed ('+response.status+'): '+detail)}
-   lastError='Gemini returned '+response.status+': '+detail;
-  }
-  throw new Error(lastError||'Gemini is temporarily unavailable.');
+  let response;
+  const controller=new AbortController();let timeoutId;
+  try{
+   response=await Promise.race([fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},signal:controller.signal,body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})}),new Promise((_,reject)=>{timeoutId=setTimeout(()=>{controller.abort();reject(new Error('Google Gemini did not respond within 25 seconds.'))},25000)})]);
+  }catch(err){throw new Error(err?.message||'Could not connect to Google Gemini.')}finally{clearTimeout(timeoutId)}
+  let payload;
+  try{payload=await response.json()}catch{throw new Error('Google Gemini returned an unreadable response ('+response.status+').')}
+  if(response.ok)return payload;
+  const detail=payload?.error?.message||'Request rejected';
+  if(retryable.has(response.status))throw new Error('Gemini returned '+response.status+': '+detail);
+  throw new Error('Gemini highlight analysis failed ('+response.status+'): '+detail);
  }
- let payload;
- try{payload=await requestGeminiModel('gemini-3.8-flash')}
- catch(primaryError){
-  const message=primaryError?.message||String(primaryError);
-  if(!/503|502|500|504|429|temporarily unavailable|did not respond|network|fetch|abort|signal is aborted/i.test(message))throw primaryError;
-  setStatus('Primary Gemini model is busy. Switching to backup model…');$('exportTitle').textContent='Switching AI model…';
-  try{payload=await requestGeminiModel('gemini-3.5-flash-lite')}
-  catch(fallbackError){setStatus('Gemini is unavailable. Building a Short from your SRT locally…');$('exportTitle').textContent='Using local highlight selection…';return selectLocalHighlights()}
+ try{
+  let payload;
+  try{payload=await requestGeminiModel('gemini-3.8-flash')}
+  catch(primaryError){setStatus('Primary highlight model unavailable. Trying backup…');$('exportTitle').textContent='Trying backup highlight model…';payload=await requestGeminiModel('gemini-3.5-flash-lite')}
+  const raw=payload?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
+  if(!raw)throw new Error('Gemini returned an empty highlight plan.');
+  const parsed=JSON.parse(raw.replace(/^﻿/,'').replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,''));
+  const list=Array.isArray(parsed)?parsed:parsed.segments;
+  if(!Array.isArray(list)||!list.length)throw new Error('Gemini did not return valid highlight segments.');
+  const ranges=list.filter(x=>x&&typeof x==='object').map(x=>({startMs:Math.max(0,Math.round(Number(x.start)*1000)),endMs:Math.min(state.duration,Math.round(Number(x.end)*1000)),reason:String(x.reason||'')})).filter(x=>Number.isFinite(x.startMs)&&Number.isFinite(x.endMs)&&x.endMs>x.startMs&&x.startMs<state.duration).sort((a,b)=>a.startMs-b.startMs);
+  const clean=[];for(const r of ranges){const prev=clean[clean.length-1];if(prev&&r.startMs<prev.endMs)r.startMs=prev.endMs;if(r.endMs-r.startMs<1200)continue;if(r.endMs>r.startMs)clean.push(r)}
+  if(!clean.length)throw new Error('Gemini returned no usable timestamp ranges.');
+  const chosen=[];let total=0;for(const r of clean){if(total>=60000)break;const take=Math.min(r.endMs-r.startMs,60000-total);if(take<1000)break;chosen.push({startMs:r.startMs,endMs:r.startMs+take,reason:r.reason});total+=take}
+  if(total<8000)throw new Error('The selected highlights are too short to make a useful Short.');
+  return chosen;
+ }catch(err){
+  console.warn('[Energy Studio] Gemini highlight selection unavailable; using SRT-local selection.',err);
+  $('aiShortStatus').textContent='Using your SRT directly. Gemini was unavailable, so moments are selected locally.';
+  return useLocal();
  }
- const raw=payload?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
- if(!raw)throw new Error('Gemini returned an empty highlight plan.');
- const parsed=JSON.parse(raw.replace(/^﻿/,'').replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,''));
- const list=Array.isArray(parsed)?parsed:parsed.segments;
- if(!Array.isArray(list)||!list.length)throw new Error('Gemini did not return valid highlight segments.');
- const ranges=list.filter(x=>x&&typeof x==='object').map(x=>({startMs:Math.max(0,Math.round(Number(x.start)*1000)),endMs:Math.min(state.duration,Math.round(Number(x.end)*1000)),reason:String(x.reason||'')})).filter(x=>Number.isFinite(x.startMs)&&Number.isFinite(x.endMs)&&x.endMs>x.startMs&&x.startMs<state.duration).sort((a,b)=>a.startMs-b.startMs);
- const clean=[];for(const r of ranges){const prev=clean[clean.length-1];if(prev&&r.startMs<prev.endMs)r.startMs=prev.endMs;if(r.endMs-r.startMs<1200)continue;if(r.endMs>r.startMs)clean.push(r)}
- if(!clean.length)throw new Error('Gemini returned no usable timestamp ranges.');
- const chosen=[];let total=0;for(const r of clean){if(total>=60000)break;const take=Math.min(r.endMs-r.startMs,60000-total);if(take<1000)break;chosen.push({startMs:r.startMs,endMs:r.startMs+take,reason:r.reason});total+=take}
- if(total<8000)throw new Error('The selected highlights are too short to make a useful Short.');
- return chosen;
 }
 function buildHighlightAudio(decoded,segments,ctx){
  const channels=decoded.numberOfChannels,sr=decoded.sampleRate,totalSamples=segments.reduce((n,x)=>n+Math.max(0,Math.floor((x.endMs-x.startMs)*sr/1000)),0);
@@ -380,11 +381,10 @@ async function generateShortOnly(){
  if(!state.images.length){setStatus('Add the images folder for this video before generating a Short.','error');return}
  refreshDuration();
  if(!state.duration){setStatus('The project has no usable video duration.','error');return}
- if(!$('geminiKey').value.trim()){$('aiShortSettingsToggle').setAttribute('aria-expanded','true');$('aiShortConfig').classList.remove('hidden');$('geminiKey').focus();setStatus('Add your Google AI Studio API key in AI Shorts settings.','error');return}
- if(!saveGeminiKey())return;
+ if($('geminiKey').value.trim())saveGeminiKey();
  stopPlayback();state.pendingAiShort=null;$('videoDownloads').style.display='none';$('downloadFullVideo').hidden=true;$('downloadAiShort').hidden=false;$('downloadAiShort').disabled=true;$('downloadAiShort').textContent='Download AI Short';$('shortOnlyBtn').disabled=true;$('exportBtn').disabled=true;
  try{
-  $('exportTitle').textContent='Selecting the best moments…';$('exportHint').textContent='Analyzing your complete SRT and preparing a vertical Short. The full video will not be rendered.';$('aiShortStatus').textContent='Gemini is analyzing the complete transcript…';setProgress(0);setStatus('Selecting the strongest moments from your transcript…');
+  $('exportTitle').textContent='Selecting the best moments…';$('exportHint').textContent='Analyzing your complete SRT and preparing a vertical Short. The full video will not be rendered.';$('aiShortStatus').textContent='Finding the strongest moments in your SRT…';setProgress(0);setStatus('Selecting the strongest moments from your transcript…');
   const segments=await selectAiHighlights();
   $('aiShortStatus').textContent='Selected '+segments.length+' moments · '+Math.round(segments.reduce((n,x)=>n+x.endMs-x.startMs,0)/1000)+' seconds';$('exportTitle').textContent='Rendering your 9:16 Short…';setStatus('Rendering the Short only. Your full video is untouched.');
   const recorded=await recordVideo({segments,portrait:true});const shortMp4=recorded.type.includes('mp4')?recorded:await convertMp4(recorded);
@@ -395,7 +395,7 @@ async function generateShortOnly(){
 $('shortOnlyBtn').addEventListener('click',generateShortOnly);
 $('exportBtn').addEventListener('click',async()=>{if(!state.cues.length){setStatus('Import an SRT file or create captions first.','error');return}if(state.rendering)return;let fullDone=false;state.pendingFullVideo=null;state.pendingAiShort=null;$('videoDownloads').style.display='none';$('downloadFullVideo').hidden=false;$('downloadAiShort').hidden=false;$('downloadFullVideo').disabled=true;$('downloadAiShort').disabled=true;$('downloadFullVideo').textContent='Download full video';$('downloadAiShort').textContent='Download AI Short';try{stopPlayback();$('exportBtn').disabled=true;$('exportTitle').textContent='Rendering full video…';$('exportHint').textContent='The full video will be prepared first. You will tap each download button when rendering finishes.';setProgress(0);setStatus('Preparing your full video…');const recorded=await recordVideo();const mp4=recorded.type.includes('mp4')?recorded:await convertMp4(recorded);state.pendingFullVideo=mp4;state.exportStamp=new Date().toISOString().replace(/[:.]/g,'-');fullDone=true;setProgress(1);setStatus('Full video is ready.','success');$('downloadFullVideo').disabled=false;$('videoDownloads').style.display='flex';
  if($('aiShortEnabled').checked){
-  try{$('aiShortStatus').textContent='Gemini is analyzing the complete transcript…';$('exportTitle').textContent='Selecting the best moments…';const segments=await selectAiHighlights();$('aiShortStatus').textContent='Selected '+segments.length+' moments · '+Math.round(segments.reduce((n,x)=>n+x.endMs-x.startMs,0)/1000)+' seconds';$('exportTitle').textContent='Rendering 9:16 AI Short…';setProgress(0);const shortRecorded=await recordVideo({segments,portrait:true});const shortMp4=shortRecorded.type.includes('mp4')?shortRecorded:await convertMp4(shortRecorded);state.pendingAiShort=shortMp4;$('downloadAiShort').disabled=false;$('aiShortStatus').textContent='AI Short is ready. Tap its download button below.';setStatus('Both videos are ready. Tap each download button to save both files.','success');$('exportTitle').textContent='Both videos ready — download each file.';$('exportHint').textContent='Tap Download full video, then Download AI Short. Each tap starts one browser download.'}
+  try{$('aiShortStatus').textContent='Finding the strongest moments in your SRT…';$('exportTitle').textContent='Selecting the best moments…';const segments=await selectAiHighlights();$('aiShortStatus').textContent='Selected '+segments.length+' moments · '+Math.round(segments.reduce((n,x)=>n+x.endMs-x.startMs,0)/1000)+' seconds';$('exportTitle').textContent='Rendering 9:16 AI Short…';setProgress(0);const shortRecorded=await recordVideo({segments,portrait:true});const shortMp4=shortRecorded.type.includes('mp4')?shortRecorded:await convertMp4(shortRecorded);state.pendingAiShort=shortMp4;$('downloadAiShort').disabled=false;$('aiShortStatus').textContent='AI Short is ready. Tap its download button below.';setStatus('Both videos are ready. Tap each download button to save both files.','success');$('exportTitle').textContent='Both videos ready — download each file.';$('exportHint').textContent='Tap Download full video, then Download AI Short. Each tap starts one browser download.'}
   catch(shortError){console.error('[Energy Studio AI Short]',shortError);$('aiShortStatus').textContent='Short not created: '+(shortError?.message||String(shortError));setStatus('Full video is safe and ready to download. AI Short failed: '+(shortError?.message||String(shortError)),'error');$('exportTitle').textContent='Full video ready · Short needs attention.'}
  }else{$('exportTitle').textContent='Your full MP4 is ready.';$('exportHint').textContent='Tap Download full video to save it.';setStatus('Full video export complete.','success')}
  }catch(err){console.error('[SRT Studio export failure]',err,err?.stack||'');const detail=typeof err==='string'?err:(err?.message||err?.name||JSON.stringify(err)||String(err));setStatus((fullDone?'Full video is ready. ':'')+'Export failed: '+detail,'error');$('exportTitle').textContent=fullDone?'Full video ready · Short failed.':'Export could not finish.'}finally{restoreExportCanvas();$('exportBtn').disabled=false;setTimeout(()=>setProgress(0,false),2500)}});

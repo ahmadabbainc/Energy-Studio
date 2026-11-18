@@ -211,7 +211,7 @@ async function selectAiHighlights(){
  try{payload=await requestGeminiModel('gemini-3.8-flash')}
  catch(primaryError){
   const message=primaryError?.message||String(primaryError);
-  if(!/503|502|500|504|429|temporarily unavailable|did not respond|network|fetch/i.test(message))throw primaryError;
+  if(!/503|502|500|504|429|temporarily unavailable|did not respond|network|fetch|abort|signal is aborted/i.test(message))throw primaryError;
   setStatus('Primary Gemini model is busy. Switching to backup model…');$('exportTitle').textContent='Switching AI model…';
   try{payload=await requestGeminiModel('gemini-3.5-flash-lite')}
   catch(fallbackError){setStatus('Gemini is unavailable. Building a Short from your SRT locally…');$('exportTitle').textContent='Using local highlight selection…';return selectLocalHighlights()}

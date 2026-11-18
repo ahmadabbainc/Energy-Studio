@@ -168,9 +168,8 @@ async function selectAiHighlights(){
  if(!transcript.length)throw new Error('No subtitle transcript is available for highlight selection.');
  const duration=state.duration/1000;
  const prompt='You are an expert short-form video editor. Select the strongest chronological moments from this complete transcript to create ONE compelling vertical short. Choose a strong opening hook, meaningful context, the most interesting facts/drama, and a satisfying payoff. Do not invent words or select empty gaps. Choose 3 to 8 timestamp ranges from the transcript. Keep ranges chronological and non-overlapping. Total selected duration must be between 35 and 60 seconds (or use all available content if the transcript is shorter). Each range should include complete sentences where practical. Return ONLY JSON: {"segments":[{"start":number,"end":number,"reason":"brief reason"}]}. Times are seconds from the original video. Video duration: '+duration.toFixed(2)+' seconds. Transcript JSON: '+JSON.stringify(transcript);
- const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})});
- const payload=await response.json();
- if(!response.ok)throw new Error(payload?.error?.message||'Gemini highlight analysis failed ('+response.status+').');
+ let response,payload;try{response=await withTimeout(fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})}),90000,'Google Gemini did not respond within 90 seconds. Check your connection and API access, then try again.');}catch(err){throw new Error(err?.message||'Could not connect to Google Gemini. Check your internet connection.')}try{payload=await response.json()}catch{throw new Error('Google Gemini returned an unreadable response ('+response.status+'). Please try again.')}
+ if(!response.ok){const detail=payload?.error?.message||'Request rejected';if(response.status===400||response.status===403)throw new Error('Google Gemini rejected the API key or request ('+response.status+'): '+detail);if(response.status===429)throw new Error('Google Gemini rate limit or quota reached: '+detail);throw new Error('Gemini highlight analysis failed ('+response.status+'): '+detail)}
  const raw=payload?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
  if(!raw)throw new Error('Gemini returned an empty highlight plan.');
  const parsed=JSON.parse(raw.replace(/^﻿/,'').replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,''));
@@ -213,20 +212,21 @@ function stampSrt(ms){const h=Math.floor(ms/3600000),m=Math.floor(ms/60000)%60,s
 let energyFolderHandle=null,pendingExportTempHandle=null;
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);const h=blob&&blob._energyTempHandle?blob._energyTempHandle:pendingExportTempHandle;if(h){if(blob&&blob._energyTempHandle)delete blob._energyTempHandle;pendingExportTempHandle=null;setTimeout(async()=>{try{await(await navigator.storage.getDirectory()).removeEntry(h.name)}catch{}},60000)}}
 $('exportSrtBtn').addEventListener('click',()=>{if(!state.cues.length){setStatus('Import or create captions first.','error');return}const txt=state.cues.map((c,i)=>(i+1)+'\n'+stampSrt(c.startMs)+' --> '+stampSrt(c.endMs)+'\n'+c.text).join('\n\n')+'\n';download(new Blob([txt],{type:'text/plain;charset=utf-8'}),'edited-captions.srt')});
+function withTimeout(promise,ms,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms)})]).finally(()=>clearTimeout(timer))}
 async function recordVideo(options={}){
  const fps=+$('fps').value;
- if(state.audioFile&&(!Number.isFinite(audio.duration)||audio.duration<=0))await new Promise((resolve,reject)=>{const ok=()=>{cleanup();resolve()},bad=()=>{cleanup();reject(new Error('Audio metadata could not be read.'))},cleanup=()=>{audio.removeEventListener('loadedmetadata',ok);audio.removeEventListener('error',bad)};audio.addEventListener('loadedmetadata',ok,{once:true});audio.addEventListener('error',bad,{once:true})});
+ if(state.audioFile&&(!Number.isFinite(audio.duration)||audio.duration<=0))await withTimeout(new Promise((resolve,reject)=>{const ok=()=>{cleanup();resolve()},bad=()=>{cleanup();reject(new Error('Audio metadata could not be read.'))},cleanup=()=>{audio.removeEventListener('loadedmetadata',ok);audio.removeEventListener('error',bad)};audio.addEventListener('loadedmetadata',ok,{once:true});audio.addEventListener('error',bad,{once:true})}),20000,'Audio is taking too long to load. Try reselecting the audio file or use an MP3/WAV copy.');
  refreshDuration();const segments=Array.isArray(options.segments)&&options.segments.length?options.segments:null;const dur=segments?segments.reduce((n,x)=>n+(x.endMs-x.startMs),0):state.duration;
  if(!dur)throw new Error('There is no timeline to export.');
  if(!window.VideoEncoder)throw new Error('This browser does not support frame-accurate WebCodecs export. Use the latest Chrome or Edge.');
  for(const item of state.images){
   if(!item.img.complete||!item.img.naturalWidth){
-   if(typeof item.img.decode==='function')await item.img.decode();
-   else await new Promise((resolve,reject)=>{item.img.onload=resolve;item.img.onerror=()=>reject(new Error('An image could not be decoded: '+item.name))});
+   if(typeof item.img.decode==='function')await withTimeout(item.img.decode(),15000,'Image decoding timed out: '+item.name);
+   else await withTimeout(new Promise((resolve,reject)=>{item.img.onload=resolve;item.img.onerror=()=>reject(new Error('An image could not be decoded: '+item.name))}),15000,'Image decoding timed out: '+item.name);
   }
  }
  $('exportTitle').textContent='Preparing frame-accurate MP4…';
- const mb=await import('https://esm.sh/mediabunny@1.66.0');
+ const mb=await withTimeout(import('https://esm.sh/mediabunny@1.66.0'),45000,'The video encoder library did not load. Check your internet connection and reload Energy Studio.');
  const {Output,Mp4OutputFormat,BufferTarget,StreamTarget,CanvasSource,AudioBufferSource,Quality,canEncodeAudio}=mb;
  const originalCanvas={w:canvas.width,h:canvas.height};state._originalCanvas=originalCanvas;state._portraitExport=!!options.portrait;const d=options.portrait?{w:1080,h:1920}:dimensions();if(canvas.width!==d.w||canvas.height!==d.h){canvas.width=d.w;canvas.height=d.h;$('canvasShell').style.aspectRatio=d.w+'/'+d.h;rebuildGradients();captionCache.clear()}const totalMs=Math.max(1,Math.round(dur)),totalFrames=Math.ceil(totalMs*fps/1000);
  const pixels=d.w*d.h,bitrate=Math.max(4500000,Math.min(16000000,Math.round(pixels*fps*.13)));
@@ -253,7 +253,7 @@ async function recordVideo(options={}){
   audioContext=new (window.AudioContext||window.webkitAudioContext)();
   let clipped;
   if(state.audioFile){
-   const decoded=await audioContext.decodeAudioData(await state.audioFile.arrayBuffer());
+   setStatus('Preparing the selected audio for the Short…');const audioBytes=await withTimeout(state.audioFile.arrayBuffer(),30000,'Could not read the audio file. Try reselecting it.');const decoded=await withTimeout(audioContext.decodeAudioData(audioBytes),90000,'Audio decoding timed out. The audio may be too large for this device; try an MP3 copy or a shorter audio file.');
    if(segments)clipped=buildHighlightAudio(decoded,segments,audioContext);
    else{
     const maxLength=Math.min(decoded.length,Math.ceil(totalMs/1000*decoded.sampleRate));
@@ -277,17 +277,17 @@ async function recordVideo(options={}){
  }
  state.rendering=true;
  try{
-  await output.start();
+  await withTimeout(output.start(),30000,'The MP4 encoder did not start. Reload the page and try again.');
   // Write the smaller audio track first. This prevents the MP4 muxer from
   // retaining the entire long video in memory while it waits for audio packets.
   if(audioSource&&state._exportAudioBuffer){
-   await audioSource.add(state._exportAudioBuffer);
+   await withTimeout(audioSource.add(state._exportAudioBuffer),90000,'Audio encoding timed out. Try a shorter or smaller audio file.');
    audioSource.close();
   }
   for(let i=0;i<totalFrames;i++){
    const tMs=Math.min(totalMs-1,i*1000/fps);
    drawFrame(sourceTimeAtOutputTime(tMs,segments));
-   await videoSource.add(i/fps,1/fps);
+   await withTimeout(videoSource.add(i/fps,1/fps),20000,'Video encoding stalled at '+Math.round(i/totalFrames*100)+'%. Reload the page and try again.');
    if(i%Math.max(1,Math.floor(fps/2))===0){
     setProgress(i/totalFrames);
     setStatus(['Preparing your video, boss.','Aligning every frame with precision.','The visuals are coming together nicely.','Encoding is proceeding smoothly, boss.','Almost there. Just polishing the final frames.'][Math.min(4,Math.floor((i/totalFrames)*5))]);
@@ -295,7 +295,7 @@ async function recordVideo(options={}){
    }
   }
   videoSource.close();
-  await output.finalize();
+  await withTimeout(output.finalize(),60000,'The MP4 file could not be finalized. Try exporting again with fewer images or a shorter clip.');
   if(exportTempFileHandle){
    const file=await exportTempFileHandle.getFile();
    if(!file||!file.size)throw new Error('The MP4 encoder returned an empty file.');

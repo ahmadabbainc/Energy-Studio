@@ -172,11 +172,13 @@ function selectLocalHighlights(){
   for(let j=i;j<cues.length&&cues[j].startMs<start+12000;j++){end=Math.max(end,cues[j].endMs);parts.push(cues[j].text)}
   if(end-start<6500)continue;
   end=Math.min(duration,start+12000);
-  const text=parts.join(' '),words=text.match(/[\\p{L}\\p{N}']+/gu)||[];
-  const hooks=(text.match(/\\b(why|how|secret|never|first|only|million|billion|discovered|revealed|failed|success|impossible|because|but|however|crisis|survived|changed|invented|built)\\b/gi)||[]).length;
-  const numbers=(text.match(/\\b\\d+(?:[.,]\\d+)?%?\\b/g)||[]).length;
-  const sentences=(text.match(/[.!?](?:\\s|$)/g)||[]).length;
-  candidates.push({startMs:start,endMs:end,score:Math.min(words.length,100)*.18+hooks*2.2+numbers*1.5+sentences*1.3+(i===0?1:0),reason:'Selected from caption content'});
+  const text=parts.join(' '),words=text.match(/[\p{L}\p{N}']+/gu)||[];
+  const hooks=(text.match(/\b(why|how|secret|never|first|only|million|billion|discovered|revealed|failed|success|impossible|because|but|however|crisis|survived|changed|invented|built|truth|mistake|danger|surprise|uncovered)\b/gi)||[]).length;
+  const numbers=(text.match(/\b\d+(?:[.,]\d+)?%?\b/g)||[]).length;
+  const sentences=(text.match(/[.!?](?:\s|$)/g)||[]).length;
+  const length=Math.min(words.length,100);
+  const density=words.length?Math.min(1,words.length/24):0;
+  candidates.push({startMs:start,endMs:end,score:length*.18+hooks*2.5+numbers*1.5+sentences*1.3+density*2+(i===0?.5:0),reason:'Selected from caption content'});
  }
  if(!candidates.length)return [{startMs:Math.max(0,cues[0].startMs),endMs:Math.min(duration,Math.max(cues[0].startMs+8000,cues[cues.length-1].endMs)),reason:'Available caption sequence'}];
  candidates.sort((a,b)=>b.score-a.score);
@@ -195,7 +197,7 @@ async function selectAiHighlights(){
  const duration=state.duration/1000;
  const prompt='You are an expert short-form video editor. Select the strongest chronological moments from this complete transcript to create ONE compelling vertical short. Choose a strong opening hook, meaningful context, the most interesting facts/drama, and a satisfying payoff. Do not invent words or select empty gaps. Choose 3 to 8 timestamp ranges from the transcript. Keep ranges chronological and non-overlapping. Total selected duration must be between 35 and 60 seconds (or use all available content if the transcript is shorter). Each range should include complete sentences where practical. Return ONLY JSON: {"segments":[{"start":number,"end":number,"reason":"brief reason"}]}. Times are seconds from the original video. Video duration: '+duration.toFixed(2)+' seconds. Transcript JSON: '+JSON.stringify(transcript);
  async function requestGeminiModel(model){
-  const retryable=new Set([429,500,502,503,504]);let lastError='';
+  const retryable=new Set([429,500,502,503,504]);
   let response;
   const controller=new AbortController();let timeoutId;
   try{

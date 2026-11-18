@@ -168,8 +168,30 @@ async function selectAiHighlights(){
  if(!transcript.length)throw new Error('No subtitle transcript is available for highlight selection.');
  const duration=state.duration/1000;
  const prompt='You are an expert short-form video editor. Select the strongest chronological moments from this complete transcript to create ONE compelling vertical short. Choose a strong opening hook, meaningful context, the most interesting facts/drama, and a satisfying payoff. Do not invent words or select empty gaps. Choose 3 to 8 timestamp ranges from the transcript. Keep ranges chronological and non-overlapping. Total selected duration must be between 35 and 60 seconds (or use all available content if the transcript is shorter). Each range should include complete sentences where practical. Return ONLY JSON: {"segments":[{"start":number,"end":number,"reason":"brief reason"}]}. Times are seconds from the original video. Video duration: '+duration.toFixed(2)+' seconds. Transcript JSON: '+JSON.stringify(transcript);
- let response,payload;try{response=await withTimeout(fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})}),90000,'Google Gemini did not respond within 90 seconds. Check your connection and API access, then try again.');}catch(err){throw new Error(err?.message||'Could not connect to Google Gemini. Check your internet connection.')}try{payload=await response.json()}catch{throw new Error('Google Gemini returned an unreadable response ('+response.status+'). Please try again.')}
- if(!response.ok){const detail=payload?.error?.message||'Request rejected';if(response.status===400||response.status===403)throw new Error('Google Gemini rejected the API key or request ('+response.status+'): '+detail);if(response.status===429)throw new Error('Google Gemini rate limit or quota reached: '+detail);throw new Error('Gemini highlight analysis failed ('+response.status+'): '+detail)}
+ async function requestGeminiModel(model){
+  const retryable=new Set([429,500,502,503,504]);let lastError='';
+  for(let attempt=0;attempt<2;attempt++){
+   if(attempt){const wait=3000+attempt*4000;setStatus('Gemini is busy. Retrying '+model+' in '+Math.round(wait/1000)+' seconds…');$('exportTitle').textContent='Retrying AI highlight analysis…';await new Promise(resolve=>setTimeout(resolve,wait))}
+   let response,payload;
+   try{response=await withTimeout(fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})}),60000,'Google Gemini did not respond within 60 seconds.');}
+   catch(err){lastError=err?.message||'Could not connect to Google Gemini.';continue}
+   try{payload=await response.json()}catch{lastError='Google Gemini returned an unreadable response ('+response.status+').';if(retryable.has(response.status))continue;throw new Error(lastError)}
+   if(response.ok)return payload;
+   const detail=payload?.error?.message||'Request rejected';
+   if(!retryable.has(response.status)){if(response.status===400||response.status===403)throw new Error('Google Gemini rejected the API key or request ('+response.status+'): '+detail);throw new Error('Gemini highlight analysis failed ('+response.status+'): '+detail)}
+   lastError='Gemini returned '+response.status+': '+detail;
+  }
+  throw new Error(lastError||'Gemini is temporarily unavailable.');
+ }
+ let payload;
+ try{payload=await requestGeminiModel('gemini-3.8-flash')}
+ catch(primaryError){
+  const message=primaryError?.message||String(primaryError);
+  if(!/503|502|500|504|429|temporarily unavailable|did not respond|network|fetch/i.test(message))throw primaryError;
+  setStatus('Primary Gemini model is busy. Switching to backup model…');$('exportTitle').textContent='Switching AI model…';
+  try{payload=await requestGeminiModel('gemini-3.6-flash')}
+  catch(fallbackError){throw new Error('Gemini is currently overloaded. Energy Studio retried the primary model and backup model, but neither responded. Please try again in a few minutes. Details: '+(fallbackError?.message||String(fallbackError)))}
+ }
  const raw=payload?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
  if(!raw)throw new Error('Gemini returned an empty highlight plan.');
  const parsed=JSON.parse(raw.replace(/^﻿/,'').replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,''));

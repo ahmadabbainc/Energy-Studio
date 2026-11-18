@@ -161,6 +161,31 @@ function imageMotionProgress(t,ci,ii){if(ii<0)return 0;let start=0,end=state.dur
 function rebuildGradients(){const w=canvas.width,h=canvas.height;backgroundGradient=ctx.createLinearGradient(0,0,0,h);backgroundGradient.addColorStop(0,'#243b58');backgroundGradient.addColorStop(1,'#101722');scrimGradient=ctx.createLinearGradient(0,h*.42,0,h);scrimGradient.addColorStop(0,'rgba(0,0,0,0)');scrimGradient.addColorStop(1,'rgba(0,0,0,.72)')}
 function restoreExportCanvas(){const d=state._originalCanvas;if(!d)return;canvas.width=d.w;canvas.height=d.h;$('canvasShell').style.aspectRatio=d.w+'/'+d.h;rebuildGradients();captionCache.clear();delete state._portraitExport;delete state._originalCanvas;syncPreview()}
 function sourceTimeAtOutputTime(tMs,segments){if(!segments)return tMs;let cursor=0;for(const seg of segments){const len=seg.endMs-seg.startMs;if(tMs<cursor+len)return seg.startMs+Math.max(0,tMs-cursor);cursor+=len}const last=segments[segments.length-1];return last?last.endMs-1:0}
+function selectLocalHighlights(){
+ const cues=state.cues.filter(c=>c&&c.text&&c.endMs>c.startMs).slice().sort((a,b)=>a.startMs-b.startMs);
+ if(!cues.length)throw new Error('No subtitle transcript is available for local highlight selection.');
+ const duration=state.duration||Math.max(...cues.map(c=>c.endMs));
+ if(duration<=60000)return [{startMs:Math.max(0,cues[0].startMs),endMs:Math.min(duration,cues[cues.length-1].endMs),reason:'Complete available transcript'}];
+ const candidates=[];
+ for(let i=0;i<cues.length;i++){
+  const start=cues[i].startMs;let end=start,parts=[];
+  for(let j=i;j<cues.length&&cues[j].startMs<start+12000;j++){end=Math.max(end,cues[j].endMs);parts.push(cues[j].text)}
+  if(end-start<6500)continue;
+  end=Math.min(duration,start+12000);
+  const text=parts.join(' '),words=text.match(/[\\p{L}\\p{N}']+/gu)||[];
+  const hooks=(text.match(/\\b(why|how|secret|never|first|only|million|billion|discovered|revealed|failed|success|impossible|because|but|however|crisis|survived|changed|invented|built)\\b/gi)||[]).length;
+  const numbers=(text.match(/\\b\\d+(?:[.,]\\d+)?%?\\b/g)||[]).length;
+  const sentences=(text.match(/[.!?](?:\\s|$)/g)||[]).length;
+  candidates.push({startMs:start,endMs:end,score:Math.min(words.length,100)*.18+hooks*2.2+numbers*1.5+sentences*1.3+(i===0?1:0),reason:'Selected from caption content'});
+ }
+ if(!candidates.length)return [{startMs:Math.max(0,cues[0].startMs),endMs:Math.min(duration,Math.max(cues[0].startMs+8000,cues[cues.length-1].endMs)),reason:'Available caption sequence'}];
+ candidates.sort((a,b)=>b.score-a.score);
+ const chosen=[];let total=0;
+ for(const c of candidates){if(chosen.length>=8||total>=55000)break;if(chosen.some(x=>c.startMs<x.endMs+1200&&c.endMs>x.startMs-1200))continue;chosen.push({startMs:c.startMs,endMs:c.endMs,reason:c.reason});total+=c.endMs-c.startMs}
+ chosen.sort((a,b)=>a.startMs-b.startMs);
+ if(!chosen.length)throw new Error('Could not build local highlights from the captions.');
+ return chosen;
+}
 async function selectAiHighlights(){
  const key=$('geminiKey').value.trim();
  if(!key)throw new Error('Add your Google AI Studio API key in Video Settings to create the AI Short.');
@@ -173,7 +198,7 @@ async function selectAiHighlights(){
   for(let attempt=0;attempt<2;attempt++){
    if(attempt){const wait=3000+attempt*4000;setStatus('Gemini is busy. Retrying '+model+' in '+Math.round(wait/1000)+' seconds…');$('exportTitle').textContent='Retrying AI highlight analysis…';await new Promise(resolve=>setTimeout(resolve,wait))}
    let response,payload;
-   try{response=await withTimeout(fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})}),60000,'Google Gemini did not respond within 60 seconds.');}
+   const controller=new AbortController();let timeoutId;try{response=await Promise.race([fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},signal:controller.signal,body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})}),new Promise((_,reject)=>{timeoutId=setTimeout(()=>{controller.abort();reject(new Error('Google Gemini did not respond within 25 seconds.'))},25000)})])}finally{clearTimeout(timeoutId)}
    catch(err){lastError=err?.message||'Could not connect to Google Gemini.';continue}
    try{payload=await response.json()}catch{lastError='Google Gemini returned an unreadable response ('+response.status+').';if(retryable.has(response.status))continue;throw new Error(lastError)}
    if(response.ok)return payload;
@@ -190,7 +215,7 @@ async function selectAiHighlights(){
   if(!/503|502|500|504|429|temporarily unavailable|did not respond|network|fetch/i.test(message))throw primaryError;
   setStatus('Primary Gemini model is busy. Switching to backup model…');$('exportTitle').textContent='Switching AI model…';
   try{payload=await requestGeminiModel('gemini-3.6-flash')}
-  catch(fallbackError){throw new Error('Gemini is currently overloaded. Energy Studio retried the primary model and backup model, but neither responded. Please try again in a few minutes. Details: '+(fallbackError?.message||String(fallbackError)))}
+  catch(fallbackError){setStatus('Gemini is unavailable. Building a Short from your SRT locally…');$('exportTitle').textContent='Using local highlight selection…';return selectLocalHighlights()}
  }
  const raw=payload?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
  if(!raw)throw new Error('Gemini returned an empty highlight plan.');

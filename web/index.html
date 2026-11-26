@@ -206,75 +206,64 @@ function imageMotionProgress(t,ci,ii){if(ii<0)return 0;let start=0,end=state.dur
 function rebuildGradients(){const w=canvas.width,h=canvas.height;backgroundGradient=ctx.createLinearGradient(0,0,0,h);backgroundGradient.addColorStop(0,'#243b58');backgroundGradient.addColorStop(1,'#101722');scrimGradient=ctx.createLinearGradient(0,h*.42,0,h);scrimGradient.addColorStop(0,'rgba(0,0,0,0)');scrimGradient.addColorStop(1,'rgba(0,0,0,.72)')}
 function restoreExportCanvas(){const d=state._originalCanvas;if(!d)return;canvas.width=d.w;canvas.height=d.h;$('canvasShell').style.aspectRatio=d.w+'/'+d.h;rebuildGradients();captionCache.clear();delete state._portraitExport;delete state._originalCanvas;syncPreview()}
 function sourceTimeAtOutputTime(tMs,segments){if(!segments)return tMs;let cursor=0;for(const seg of segments){const len=seg.endMs-seg.startMs;if(tMs<cursor+len)return seg.startMs+Math.max(0,tMs-cursor);cursor+=len}const last=segments[segments.length-1];return last?last.endMs-1:0}
-function selectLocalHighlights(){
- const cues=state.cues.filter(c=>c&&c.text&&c.endMs>c.startMs).slice().sort((a,b)=>a.startMs-b.startMs);
- if(!cues.length)throw new Error('No subtitle transcript is available for local highlight selection.');
- const duration=state.duration||Math.max(...cues.map(c=>c.endMs));
- if(duration<=60000)return [{startMs:Math.max(0,cues[0].startMs),endMs:Math.min(duration,cues[cues.length-1].endMs),reason:'Complete available transcript'}];
- const candidates=[];
- for(let i=0;i<cues.length;i++){
-  const start=cues[i].startMs;let end=start,parts=[];
-  for(let j=i;j<cues.length&&cues[j].startMs<start+12000;j++){end=Math.max(end,cues[j].endMs);parts.push(cues[j].text)}
-  if(end-start<6500)continue;
-  end=Math.min(duration,start+12000);
-  const text=parts.join(' '),words=text.match(/[\p{L}\p{N}']+/gu)||[];
-  const hooks=(text.match(/\b(why|how|secret|never|first|only|million|billion|discovered|revealed|failed|success|impossible|because|but|however|crisis|survived|changed|invented|built|truth|mistake|danger|surprise|uncovered)\b/gi)||[]).length;
-  const numbers=(text.match(/\b\d+(?:[.,]\d+)?%?\b/g)||[]).length;
-  const sentences=(text.match(/[.!?](?:\s|$)/g)||[]).length;
-  const length=Math.min(words.length,100);
-  const density=words.length?Math.min(1,words.length/24):0;
-  candidates.push({startMs:start,endMs:end,score:length*.18+hooks*2.5+numbers*1.5+sentences*1.3+density*2+(i===0?.5:0),reason:'Selected from caption content'});
- }
- if(!candidates.length)return [{startMs:Math.max(0,cues[0].startMs),endMs:Math.min(duration,Math.max(cues[0].startMs+8000,cues[cues.length-1].endMs)),reason:'Available caption sequence'}];
- candidates.sort((a,b)=>b.score-a.score);
- const chosen=[];let total=0;
- for(const c of candidates){if(chosen.length>=8||total>=55000)break;if(chosen.some(x=>c.startMs<x.endMs+1200&&c.endMs>x.startMs-1200))continue;chosen.push({startMs:c.startMs,endMs:c.endMs,reason:c.reason});total+=c.endMs-c.startMs}
- chosen.sort((a,b)=>a.startMs-b.startMs);
- if(!chosen.length)throw new Error('Could not build local highlights from the captions.');
- return chosen;
+function firstMinuteShort(){
+  const duration=state.duration||Math.max(0,...state.cues.map(c=>c.endMs||0));
+  const endMs=Math.min(duration,60000);
+  if(endMs<=0)throw new Error('The project has no usable video duration.');
+  return [{startMs:0,endMs,reason:'First 60 seconds — continuous fallback'}];
 }
 async function selectAiHighlights(){
- const transcript=state.cues.map(c=>({start:Number((c.startMs/1000).toFixed(2)),end:Number((c.endMs/1000).toFixed(2)),text:c.text})).filter(c=>c.text);
- if(!transcript.length)throw new Error('No subtitle transcript is available for highlight selection.');
- const key=$('geminiKey').value.trim();
- const useLocal=()=>{setStatus('Selecting the strongest moments directly from your SRT…');$('exportTitle').textContent='Finding the best moments in your SRT…';return selectLocalHighlights()};
- if(!key)return useLocal();
- const duration=state.duration/1000;
- const prompt='You are an expert short-form video editor. Select the strongest chronological moments from this complete transcript to create ONE compelling vertical short. Choose a strong opening hook, meaningful context, the most interesting facts/drama, and a satisfying payoff. Do not invent words or select empty gaps. Choose 3 to 8 timestamp ranges from the transcript. Keep ranges chronological and non-overlapping. Total selected duration must be between 35 and 60 seconds (or use all available content if the transcript is shorter). Each range should include complete sentences where practical. Return ONLY JSON: {"segments":[{"start":number,"end":number,"reason":"brief reason"}]}. Times are seconds from the original video. Video duration: '+duration.toFixed(2)+' seconds. Transcript JSON: '+JSON.stringify(transcript);
- async function requestGeminiModel(model){
-  const retryable=new Set([429,500,502,503,504]);
-  let response;
-  const controller=new AbortController();let timeoutId;
+  const transcript=state.cues.map(c=>({start:Number((c.startMs/1000).toFixed(2)),end:Number((c.endMs/1000).toFixed(2)),text:c.text})).filter(c=>c.text);
+  if(!transcript.length)throw new Error('No subtitle transcript is available for Short generation.');
+  const key=$('geminiKey').value.trim();
+  const useFallback=()=>{setStatus('Using the first 60 seconds as one continuous Short…');$('exportTitle').textContent='Preparing the opening minute…';$('aiShortStatus').textContent='Gemini could not provide one coherent continuous section. Using the first 60 seconds instead.';return firstMinuteShort()};
+  if(!key)return useFallback();
+  const duration=state.duration/1000;
+  const prompt='You are an expert short-form video editor. Select EXACTLY ONE continuous section from this transcript to create ONE coherent vertical Short. This is NOT a montage. Do not combine separate moments, do not jump forward or backward, and do not return multiple ranges. The selected section must make sense when watched on its own: begin with enough context to understand what is happening, preserve the original narration in its natural order, and end with a clear payoff or complete thought. Prefer a strong opening and a self-contained story. Choose one uninterrupted range between 35 and 60 seconds. If the full video is shorter than 60 seconds, select the complete available video. Start and end on complete subtitle sentences where practical. Return ONLY this JSON object, with no array and no extra text: {"start":number,"end":number,"reason":"brief reason"}. Times are seconds from the original video. Video duration: '+duration.toFixed(2)+' seconds. Transcript JSON: '+JSON.stringify(transcript);
+  async function requestGeminiModel(model){
+    const retryable=new Set([429,500,502,503,504]);
+    let response;
+    const controller=new AbortController();let timeoutId;
+    try{
+      response=await Promise.race([fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},signal:controller.signal,body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.15,responseMimeType:'application/json'}})}),new Promise((_,reject)=>{timeoutId=setTimeout(()=>{controller.abort();reject(new Error('Google Gemini did not respond within 25 seconds.'))},25000)})]);
+    }catch(err){throw new Error(err?.message||'Could not connect to Google Gemini.')}finally{clearTimeout(timeoutId)}
+    let payload;
+    try{payload=await response.json()}catch{throw new Error('Google Gemini returned an unreadable response ('+response.status+').')}
+    if(response.ok)return payload;
+    const detail=payload?.error?.message||'Request rejected';
+    if(retryable.has(response.status))throw new Error('Gemini returned '+response.status+': '+detail);
+    throw new Error('Gemini highlight analysis failed ('+response.status+'): '+detail);
+  }
   try{
-   response=await Promise.race([fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},signal:controller.signal,body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.25,responseMimeType:'application/json'}})}),new Promise((_,reject)=>{timeoutId=setTimeout(()=>{controller.abort();reject(new Error('Google Gemini did not respond within 25 seconds.'))},25000)})]);
-  }catch(err){throw new Error(err?.message||'Could not connect to Google Gemini.')}finally{clearTimeout(timeoutId)}
-  let payload;
-  try{payload=await response.json()}catch{throw new Error('Google Gemini returned an unreadable response ('+response.status+').')}
-  if(response.ok)return payload;
-  const detail=payload?.error?.message||'Request rejected';
-  if(retryable.has(response.status))throw new Error('Gemini returned '+response.status+': '+detail);
-  throw new Error('Gemini highlight analysis failed ('+response.status+'): '+detail);
- }
- try{
-  let payload;
-  try{payload=await requestGeminiModel('gemini-3.8-flash')}
-  catch(primaryError){setStatus('Primary highlight model unavailable. Trying backup…');$('exportTitle').textContent='Trying backup highlight model…';payload=await requestGeminiModel('gemini-3.5-flash-lite')}
-  const raw=payload?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
-  if(!raw)throw new Error('Gemini returned an empty highlight plan.');
-  const parsed=JSON.parse(raw.replace(/^﻿/,'').replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,''));
-  const list=Array.isArray(parsed)?parsed:parsed.segments;
-  if(!Array.isArray(list)||!list.length)throw new Error('Gemini did not return valid highlight segments.');
-  const ranges=list.filter(x=>x&&typeof x==='object').map(x=>({startMs:Math.max(0,Math.round(Number(x.start)*1000)),endMs:Math.min(state.duration,Math.round(Number(x.end)*1000)),reason:String(x.reason||'')})).filter(x=>Number.isFinite(x.startMs)&&Number.isFinite(x.endMs)&&x.endMs>x.startMs&&x.startMs<state.duration).sort((a,b)=>a.startMs-b.startMs);
-  const clean=[];for(const r of ranges){const prev=clean[clean.length-1];if(prev&&r.startMs<prev.endMs)r.startMs=prev.endMs;if(r.endMs-r.startMs<1200)continue;if(r.endMs>r.startMs)clean.push(r)}
-  if(!clean.length)throw new Error('Gemini returned no usable timestamp ranges.');
-  const chosen=[];let total=0;for(const r of clean){if(total>=60000)break;const take=Math.min(r.endMs-r.startMs,60000-total);if(take<1000)break;chosen.push({startMs:r.startMs,endMs:r.startMs+take,reason:r.reason});total+=take}
-  if(total<8000)throw new Error('The selected highlights are too short to make a useful Short.');
-  return chosen;
- }catch(err){
-  console.warn('[Energy Studio] Gemini highlight selection unavailable; using SRT-local selection.',err);
-  $('aiShortStatus').textContent='Using your SRT directly. Gemini was unavailable, so moments are selected locally.';
-  return useLocal();
- }
+    let payload;
+    try{payload=await requestGeminiModel('gemini-3.8-flash')}
+    catch(primaryError){setStatus('Primary highlight model unavailable. Trying backup…');$('exportTitle').textContent='Trying backup highlight model…';payload=await requestGeminiModel('gemini-3.5-flash-lite')}
+    const raw=payload?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('').trim();
+    if(!raw)throw new Error('Gemini returned an empty Short plan.');
+    const parsed=JSON.parse(raw.replace(/^﻿/,'').replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,''));
+    const item=Array.isArray(parsed)?(parsed.length===1?parsed[0]:null):(Array.isArray(parsed.segments)?(parsed.segments.length===1?parsed.segments[0]:null):parsed);
+    if(!item||typeof item!=='object')throw new Error('Gemini returned multiple disconnected clips instead of one continuous section.');
+    let startMs=Math.max(0,Math.min(state.duration,Math.round(Number(item.start)*1000)));
+    let endMs=Math.max(0,Math.min(state.duration,Math.round(Number(item.end)*1000)));
+    if(!Number.isFinite(startMs)||!Number.isFinite(endMs)||endMs<=startMs)throw new Error('Gemini returned invalid timestamps.');
+    if(state.duration<=60000)return [{startMs:0,endMs:state.duration,reason:'Complete available video'}];
+    const cues=state.cues.filter(c=>c&&c.text&&c.endMs>c.startMs).slice().sort((a,b)=>a.startMs-b.startMs);
+    const firstCue=cues.find(c=>c.endMs>startMs);
+    if(firstCue)startMs=firstCue.startMs;
+    const lastCue=cues.filter(c=>c.startMs<endMs).pop();
+    if(lastCue)endMs=lastCue.endMs;
+    const maxEnd=Math.min(state.duration,startMs+60000);
+    if(endMs>maxEnd){
+      const safeCue=cues.filter(c=>c.endMs<=maxEnd&&c.endMs>startMs).pop();
+      endMs=safeCue?safeCue.endMs:maxEnd;
+    }
+    if(endMs-startMs<8000)throw new Error('Gemini selected a section that is too short after aligning it to complete captions.');
+    if(endMs-startMs>60000)endMs=startMs+60000;
+    return [{startMs,endMs,reason:String(item.reason||'One continuous, chronological story')}];
+  }catch(err){
+    console.warn('[Energy Studio] Gemini could not provide one coherent continuous section; using the first minute.',err);
+    return useFallback();
+  }
 }
 function buildHighlightAudio(decoded,segments,ctx){
  const channels=decoded.numberOfChannels,sr=decoded.sampleRate,totalSamples=segments.reduce((n,x)=>n+Math.max(0,Math.floor((x.endMs-x.startMs)*sr/1000)),0);

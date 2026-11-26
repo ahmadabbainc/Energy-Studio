@@ -692,9 +692,12 @@ resizeCanvas();renderCueList();drawFrame(0);
 @media(min-width:781px){
  #transcriberWorkspace .tool-layout>div:first-child{display:flex;flex-direction:column;align-items:stretch}
  #atsLaunchPanel{order:4}
- .settings-panel.is-collapsed>.panel-head{min-height:66px;display:flex;align-items:center}
+ /* Keep a useful preview visible while the remaining settings are clipped. */
+ .settings-panel.is-collapsed>.panel-head{min-height:58px;display:flex;align-items:center}
  .settings-panel.is-collapsed>.panel-head h2{font-size:13px;letter-spacing:.5px}
- .settings-panel.is-collapsed{min-height:66px}
+ .settings-panel.is-collapsed>.panel-body{display:block;max-height:168px;overflow:hidden;position:relative;padding-top:10px}
+ .settings-panel.is-collapsed>.panel-body::after{content:"";position:absolute;left:0;right:0;bottom:0;height:38px;background:linear-gradient(180deg,rgba(23,28,39,0),var(--panel));pointer-events:none}
+ .settings-panel.is-collapsed{min-height:0}
 }
 @media(max-width:780px){#atsLaunchPanel{margin:12px 0 0;padding:14px}}
 </style>

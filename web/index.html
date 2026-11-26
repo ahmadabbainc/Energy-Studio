@@ -92,7 +92,202 @@
  .settings-panel{order:3}
  .bottom-bar{order:4}
 }
-</style><script type="importmap">{"imports":{"mediabunny":"https://esm.sh/mediabunny@1.66.0"}}</script></head>
+</style><script type="importmap">{"imports":{"mediabunny":"https://esm.sh/mediabunny@1.66.0"}}</script><style>
+/* Energy Studio UI refinement — layout-only layer */
+:root{
+ --bg:#0b0e14;--panel:#141a24;--line:#293444;--muted:#98a5b7;--text:#eef3fa;
+ --accent:#f2a45b;--green:#58d6a0;--red:#ff747d;
+ --surface:#101620;--surface-raised:#1a2330;--focus:rgba(242,164,91,.32);
+}
+html{scroll-behavior:smooth}
+body{min-width:320px;background:radial-gradient(ellipse at 50% -18%,#1b2635 0,transparent 46%),var(--bg);color:var(--text);line-height:1.5}
+button,input,select,textarea{font-family:inherit}
+button{min-height:38px;transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease}
+button:active{transform:translateY(1px)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.energy-header{height:82px;padding:0 clamp(16px,3vw,42px);background:rgba(12,16,23,.92);backdrop-filter:blur(16px);border-bottom:1px solid #2a3443;box-shadow:0 8px 28px #0002}
+.energy-header .brand{gap:14px}
+.energy-header .brandmark{width:56px;height:68px;flex-basis:56px}
+.energy-header .brandmark img{width:52px;height:66px}
+.energy-header .brand-name{font-size:22px;letter-spacing:1.5px}
+.energy-header .brand small{font-size:9px;letter-spacing:3.2px;color:#eab96f}
+.menu-btn{width:44px;height:42px;background:#182130;border-color:#344256}
+.menu-btn:hover{background:#222f40;border-color:#d18b50}
+main{width:min(100%,1720px);max-width:1720px;margin:0 auto;padding:26px clamp(14px,2.2vw,34px) 48px}
+.topline{align-items:center;margin:0 0 20px;padding:0 2px}
+.topline h1{font-size:clamp(21px,2vw,27px);font-weight:780;letter-spacing:-.45px}
+.topline p{font-size:12px;color:#9ba8ba}
+.topline .time-readout{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:#121a25}
+.workspace{grid-template-columns:minmax(285px,350px) minmax(0,1fr) minmax(270px,315px);gap:16px;align-items:start}
+.project-stack{gap:16px}
+.panel,.bottom-bar,.tool-card{background:linear-gradient(180deg,#171e29 0%,#131923 100%);border:1px solid #2b3748;border-radius:14px;box-shadow:0 10px 30px #00000018}
+.panel{overflow:hidden}
+.panel-head{min-height:52px;padding:14px 17px;background:rgba(255,255,255,.018);border-bottom:1px solid #293444}
+.panel-head h2,.tool-card h2{font-size:11px;font-weight:850;letter-spacing:1.15px;color:#e8edf5}
+.panel-body{padding:16px}
+.upload-grid{gap:10px}
+.drop{min-height:104px;padding:15px 10px;background:linear-gradient(145deg,#151f2c,#111823);border:1px dashed #526078;border-radius:11px;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+.drop:hover{border-color:var(--accent);background:#1b2634;transform:translateY(-1px)}
+.drop .glyph{font-size:21px}
+.drop strong{font-size:12px;font-weight:750}
+.drop span{font-size:10px;line-height:1.35;overflow-wrap:anywhere}
+.asset-status{line-height:1.5;margin-top:12px}
+.section-label{margin:20px 0 9px;font-size:10px;letter-spacing:1.35px}
+.cue-list{max-height:460px;border-radius:10px;background:#0e141e;border-color:#303d4f}
+.cue{padding:11px 12px;background:#141b26;transition:background .12s ease}
+.cue:hover{background:#1c2735}
+.cue.active{background:#2a2a2c;box-shadow:inset 3px 0 var(--accent)}
+.cue-text{font-size:12px;line-height:1.5}
+.cue-edit{padding:14px;background:#101722}
+.field,.tool-field input,.tool-field select,.tool-field textarea{min-height:40px;background:#0c121b;border-color:#354255;border-radius:8px}
+.field:hover,.tool-field input:hover,.tool-field select:hover,.tool-field textarea:hover{border-color:#53647a}
+.field:focus,.tool-field input:focus,.tool-field select:focus,.tool-field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--focus)}
+.preview-panel .panel-body{padding:16px}
+.preview-wrap{min-height:480px;padding:18px;background:radial-gradient(ellipse at center,#182333 0,#0b1018 70%);border:1px solid #293648;border-radius:11px}
+.canvas-shell{height:min(68vh,720px);max-height:720px}
+.canvas-shell canvas{border:1px solid #344154;border-radius:8px;box-shadow:0 18px 48px #0009}
+.preview-controls{gap:10px;margin-top:14px}
+.preview-controls button{min-width:86px}
+.scrub{height:5px}
+.preview-note{font-size:10px;line-height:1.5;margin-top:10px}
+.settings-panel .panel-body{padding:16px}
+.settings-stack{display:grid;grid-template-columns:1fr;gap:0}
+.setting{padding:0 0 14px;margin:0 0 14px;border-bottom:1px solid #293444}
+.setting:last-child{padding:0;margin:0;border:0}
+.setting>label:first-child{font-size:10px;letter-spacing:.9px;color:#aab6c6;margin-bottom:7px}
+.setting select,.setting input[type=number]{min-height:39px}
+.setting input[type=range]{margin:5px 0;accent-color:var(--accent)}
+.setting small{font-size:10px;line-height:1.5}
+.checkline{align-items:flex-start;margin-top:9px}
+.checkline input{margin-top:2px}
+.ai-short-setting{padding-top:15px}
+.ai-short-heading strong{letter-spacing:1.1px;color:#f0b779}
+.ai-short-config{background:#0f1621;border-color:#334154;padding:14px}
+.bottom-bar{padding:16px;gap:14px;margin-top:0}
+.bottom-left{font-size:11px;line-height:1.55}
+.bottom-left strong{display:block;color:#f2f5f9;font-size:13px;margin-bottom:3px}
+.bottom-actions{display:grid;grid-template-columns:1fr;gap:9px}
+.bottom-actions button{width:100%;min-height:42px}
+button.primary,.tool-btn.primary{background:linear-gradient(110deg,#f2b36c,#f28b48);border-color:#f2a45b;color:#1c1711;box-shadow:0 5px 16px #e58a3a22}
+button.primary:hover,.tool-btn.primary:hover{background:linear-gradient(110deg,#ffd095,#ffa365);box-shadow:0 7px 20px #e58a3a33}
+button:not(.primary):hover,.tool-btn:not(.primary):hover{border-color:#65758c;background:#293648}
+.progress{height:5px;border-radius:99px}
+.status{line-height:1.5}
+.tool-workspace{width:100%;max-width:1360px;margin:0 auto}
+.tool-hero{padding:4px 2px 22px}
+.tool-hero h1{font-size:clamp(24px,2.4vw,31px);font-weight:800;letter-spacing:-.7px;margin:4px 0 5px}
+.tool-hero p{font-size:13px;line-height:1.6;max-width:680px}
+.tool-layout{grid-template-columns:minmax(0,1.12fr) minmax(320px,.88fr);gap:18px;align-items:start}
+.tool-layout>div{display:grid;gap:14px;align-content:start}
+.tool-card{padding:19px;margin:0;min-width:0}
+.tool-card h2{margin:0 0 14px}
+.tool-pick{min-height:104px;border-radius:12px;background:linear-gradient(145deg,#172231,#111923);border-color:#59647a;line-height:1.5;transition:all .16s ease}
+.tool-pick:hover{transform:translateY(-1px);border-color:var(--accent);background:#1c2938}
+.tool-hint{font-size:11px;line-height:1.6}
+.tool-file-row{padding:10px 2px;gap:12px}
+.tool-field{font-size:10px;letter-spacing:.7px}
+.tool-field input,.tool-field select,.tool-field textarea{font-size:12px;padding:10px 11px}
+.tool-actions{gap:9px}
+.tool-btn{min-height:39px;padding:10px 14px;border-radius:9px}
+.tool-tabs{gap:8px}
+.tool-tab{padding:8px 12px}
+.tool-preview{min-height:290px;line-height:1.65}
+.split-preview-wrap{min-height:340px;background:#0b111a;border-color:#303d50}
+#splitPreview{max-height:520px}
+.split-options{gap:12px}
+.split-option{padding:12px;border-color:#303d50;background:#111a26}
+.ats-progress-inline{margin-top:18px;padding-top:12px;border-top:1px solid #2c394b}
+#atsResults{min-width:0}
+#audioJoinerPanel>summary,#atsSettings>summary{padding:2px 0 12px;letter-spacing:.8px;color:#e9eef6}
+#audioJoinerPanel[open]>summary,#atsSettings[open]>summary{border-bottom:1px solid #2b3748;margin-bottom:12px}
+#atsRun{min-width:170px}
+.app-drawer{background:#111925;border-left-color:#344154}
+.nav-item{min-height:68px;padding:14px;border-radius:11px}
+.nav-item:hover{background:#202d3d;border-color:#52627a}
+.nav-item.active{background:linear-gradient(110deg,#302820,#1d2938);border-color:#bd8550}
+.drawer-title{letter-spacing:1.5px}
+@media(min-width:1400px){
+ .workspace{grid-template-columns:minmax(300px,365px) minmax(0,1fr) minmax(285px,330px);gap:18px}
+ .panel-body{padding:18px}
+ .preview-wrap{min-height:520px}
+}
+@media(max-width:1180px) and (min-width:781px){
+ .workspace{grid-template-columns:minmax(270px,.88fr) minmax(0,1.12fr);gap:15px}
+ .project-stack{grid-column:1;grid-row:1}
+ .preview-panel{grid-column:2;grid-row:1}
+ .settings-panel{grid-column:1/-1;grid-row:2}
+ .settings-stack{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:18px}
+ .settings-stack .ai-short-setting{grid-column:1/-1}
+ .tool-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
+@media(max-width:900px) and (min-width:781px){
+ .workspace{grid-template-columns:minmax(245px,.82fr) minmax(0,1.18fr);gap:12px}
+ .settings-stack{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px}
+ .tool-layout{grid-template-columns:1fr}
+}
+@media(max-width:780px){
+ .energy-header{height:72px;padding:0 14px}
+ .energy-header .brandmark{width:45px;height:58px;flex-basis:45px}
+ .energy-header .brandmark img{width:43px;height:56px}
+ .energy-header .brand-name{font-size:17px;letter-spacing:.6px}
+ .energy-header .brand small{font-size:8px;letter-spacing:2.1px}
+ main{padding:18px 12px 34px}
+ .topline{gap:10px;margin-bottom:16px}
+ .topline h1{font-size:21px}
+ .topline .time-readout{align-self:stretch}
+ .workspace{display:grid;grid-template-columns:minmax(0,1fr);gap:13px}
+ .project-stack{display:contents}
+ .project-stack>section{grid-column:1;order:1}
+ .preview-panel{grid-column:1;order:2}
+ .settings-panel{grid-column:1;order:3}
+ .project-stack>.bottom-bar{grid-column:1;order:4}
+ .panel-head{min-height:50px;padding:13px 15px}
+ .panel-body{padding:14px}
+ .preview-wrap{min-height:340px;padding:12px}
+ .canvas-shell{height:min(58vh,590px)}
+ .settings-stack{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px}
+ .settings-stack .ai-short-setting{grid-column:1/-1}
+ .bottom-bar{padding:14px}
+ .bottom-actions{grid-template-columns:1fr 1fr}
+ .tool-workspace{padding:0}
+ .tool-hero{padding:2px 2px 17px}
+ .tool-hero h1{font-size:24px}
+ .tool-layout{grid-template-columns:1fr;gap:12px}
+ .tool-layout>div{gap:12px}
+ .tool-card{padding:16px}
+ .split-preview-wrap{min-height:240px}
+ .app-drawer{padding:18px}
+}
+@media(max-width:520px){
+ .energy-header .brand{gap:8px}
+ .energy-header .brandmark{width:39px;height:52px;flex-basis:39px}
+ .energy-header .brandmark img{width:38px;height:50px}
+ .energy-header .brand-name{font-size:15px;letter-spacing:.4px}
+ .energy-header .brand small{font-size:7px;letter-spacing:1.8px}
+ main{padding:14px 9px 28px}
+ .upload-grid{grid-template-columns:1fr 1fr;gap:8px}
+ .drop{min-height:94px;padding:12px 8px}
+ .drop strong{font-size:11px}
+ .drop span{font-size:9px}
+ .cue-list{max-height:360px}
+ .preview-wrap{min-height:280px;padding:8px}
+ .canvas-shell{height:min(52vh,500px)}
+ .preview-controls{gap:7px;flex-wrap:wrap}
+ .preview-controls button{min-width:74px}
+ .time-readout{font-size:10px}
+ .settings-stack{grid-template-columns:1fr}
+ .settings-stack .ai-short-setting{grid-column:auto}
+ .bottom-actions{grid-template-columns:1fr}
+ .bottom-left{width:100%}
+ .tool-card{padding:14px}
+ .split-options{grid-template-columns:1fr 1fr}
+ .tool-actions>*{flex:1 1 auto}
+ #atsRun{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+</style></head>
 <body>
 <header class="energy-header"><div class="brand"><div class="brandmark"><img src="energy-studio-helmet.svg?v=2" alt="Energy Studio armored face"></div><div class="brand-copy"><span class="brand-name">ENERGY STUDIO</span><small>LIMITED EDITION</small></div></div><div class="header-right"><button id="menuBtn" class="menu-btn" aria-label="Open studio menu" aria-expanded="false"><span></span></button></div></header><div id="navBackdrop" class="nav-backdrop"></div><aside id="appDrawer" class="app-drawer" aria-label="Studio navigation"><div class="drawer-top"><div class="drawer-title">ENERGY STUDIO</div><button id="drawerClose" class="drawer-close" aria-label="Close menu">×</button></div><button class="nav-item active" data-view="videoWorkspace"><span class="nav-icon">▶</span><span><strong>Video Studio</strong><small>Build caption-synced videos</small></span></button><button class="nav-item" data-view="transcriberWorkspace"><span class="nav-icon">♫</span><span><strong>Audio Intelligence</strong><small>Audio to timed SRT subtitles</small></span></button><button class="nav-item" data-view="splitterWorkspace"><span class="nav-icon">▦</span><span><strong>Image Utilities</strong><small>Split image folders into tiles</small></span></button><div class="drawer-foot">ONE WORKSPACE · THREE CREATIVE TOOLS<br>Local image processing. Audio is sent only to the transcription provider you select.</div></aside>
 <main><div id="videoWorkspace" class="workspace-view active"><div class="topline"><div><h1>Video workspace</h1><p>All systems ready. Let's bring your story to life.</p></div><div class="time-readout" id="projectDuration">No project loaded</div></div>
@@ -112,7 +307,7 @@
 <div class="bottom-bar"><div class="bottom-left"><strong id="exportTitle">Ready when you are.</strong><div id="exportHint">Import an SRT, add images and audio, then download your video.</div><div class="progress" id="progress"><div id="progressFill"></div></div><div class="status" id="status"></div><div id="videoDownloads" style="display:none;gap:8px;flex-wrap:wrap;margin-top:10px"><button id="downloadFullVideo" class="primary" type="button">Download full video</button><button id="downloadAiShort" type="button">Download AI Short</button></div></div><div class="bottom-actions"><button id="shortOnlyBtn" type="button">Generate Short Only</button><button id="exportBtn" class="primary">Export MP4 video ↗</button></div></div>
 </div>
 <section class="panel preview-panel collapsible-panel is-collapsed"><div class="panel-head" role="button" tabindex="0" aria-expanded="false"><h2>LIVE PREVIEW</h2><span class="time-readout" id="activeCueLabel">No active caption</span></div><div class="panel-body"><div class="preview-wrap"><div class="canvas-shell" id="canvasShell"><canvas id="preview" width="720" height="1280"></canvas></div></div><div class="preview-controls"><button id="playBtn" class="primary">▶ Play</button><input id="scrub" class="scrub" type="range" min="0" max="1" step=".01" value="0"><span class="time-readout" id="clock">00:00.00 / 00:00.00</span></div><div class="preview-note">Caption changes follow the exact SRT start and end timestamps.</div></div></section>
-<section class="panel settings-panel collapsible-panel is-collapsed"><div class="panel-head" role="button" tabindex="0" aria-expanded="false"><h2>VIDEO SETTINGS</h2></div><div class="panel-body"><div class="settings-stack">
+<section class="panel settings-panel collapsible-panel"><div class="panel-head" role="button" tabindex="0" aria-expanded="false"><h2>VIDEO SETTINGS</h2></div><div class="panel-body"><div class="settings-stack">
 <div class="setting"><label>Aspect ratio</label><select class="field" id="aspect"><option value="portrait">9:16 — Shorts / Reels</option><option value="landscape" selected>16:9 — YouTube</option><option value="square">1:1 — Square</option></select></div>
 <div class="setting"><label>Resolution</label><select class="field" id="resolution"><option value="720">720p</option><option value="1080" selected>1080p</option></select></div>
 <div class="setting"><label>Frame rate</label><select class="field" id="fps"><option>24</option><option selected>30</option><option>60</option></select></div>
@@ -132,7 +327,13 @@
  <div class="tool-layout">
   <div>
    <section class="tool-card"><h2>SOURCE FILES</h2><label class="tool-pick" for="atsFiles">♫ &nbsp; Choose audio or video files</label><input id="atsFiles" type="file" accept="audio/*,video/*" multiple hidden><div id="atsFileList"></div><div id="atsFileCount" class="tool-file-count">No audio selected</div><div class="tool-actions"><button id="atsClearFiles" class="tool-btn">Clear files</button></div></section>
-   <details class="tool-card" id="audioJoinerPanel">
+
+   <section class="tool-card"><h2>OUTPUT FORMATS</h2><div id="atsFormats" class="tool-chips"></div><p class="tool-hint">Sentence SRT creates one cue per sentence. Subtitle SRT and VTT create shorter, readable captions. Word-by-word SRT preserves individual word timings.</p></section>
+   <section class="tool-card"><h2>CLEANUP</h2><label class="tool-check"><input id="atsFillers" type="checkbox" checked><span>Remove filler sounds<small>Um, uh, er and similar English fillers.</small></span></label><label class="tool-check"><input id="atsRepeats" type="checkbox" checked><span>Remove repeated short words<small>For example: “I I want” or “the the”.</small></span></label><label class="tool-check"><input id="atsSilence" type="checkbox" checked><span>Ignore words detected in silence<small>Filters words with very low audio energy.</small></span></label><label class="tool-field">Extra words to remove<input id="atsExtra" type="text" placeholder="Separate words with commas"></label></section>
+ <section id="atsLaunchPanel" class="tool-card ats-launch-panel"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong style="font-size:13px">Ready to transcribe?</strong><p class="tool-hint">Select your files, choose an output format and start processing.</p></div><div class="tool-actions" style="margin:0"><button id="atsStop" class="tool-btn" hidden>Stop</button><button id="atsRun" class="tool-btn primary">Transcribe audio</button></div></div><div id="atsProgressCard" class="ats-progress-inline" hidden><div class="tool-progress"><div id="atsProgressFill"></div></div><div id="atsProgressText" class="tool-status" aria-live="polite"></div></div><div id="atsToast" class="tool-toast" hidden role="status"></div></section>
+  </div>
+  <div>
+   <details id="audioJoinerPanel" class="tool-card audio-joiner-card">
   <summary style="cursor:pointer;font-weight:750;font-size:13px">AUDIO JOINER</summary>
   <p class="tool-hint">Combine multiple audio files into one continuous track. This runs locally and does not affect your transcription files.</p>
   <div class="tool-layout" style="margin-top:12px">
@@ -145,15 +346,11 @@
    </div>
   </div>
  </details>
-   <section class="tool-card"><h2>OUTPUT FORMATS</h2><div id="atsFormats" class="tool-chips"></div><p class="tool-hint">Sentence SRT creates one cue per sentence. Subtitle SRT and VTT create shorter, readable captions. Word-by-word SRT preserves individual word timings.</p></section>
-   <section class="tool-card"><h2>CLEANUP</h2><label class="tool-check"><input id="atsFillers" type="checkbox" checked><span>Remove filler sounds<small>Um, uh, er and similar English fillers.</small></span></label><label class="tool-check"><input id="atsRepeats" type="checkbox" checked><span>Remove repeated short words<small>For example: “I I want” or “the the”.</small></span></label><label class="tool-check"><input id="atsSilence" type="checkbox" checked><span>Ignore words detected in silence<small>Filters words with very low audio energy.</small></span></label><label class="tool-field">Extra words to remove<input id="atsExtra" type="text" placeholder="Separate words with commas"></label></section>
-  </div>
-  <div>
-   <details id="atsSettings" class="tool-card"><summary style="cursor:pointer;font-weight:750;font-size:13px">TRANSCRIPTION SETTINGS</summary><label class="tool-field">Service<select id="atsProvider"></select></label><label class="tool-field">API key<div class="tool-keyrow"><input id="atsKey" type="password" autocomplete="off" placeholder="Paste provider API key"><button id="atsShowKey" class="tool-btn" type="button">Show</button></div></label><p class="tool-hint">Your key is saved in this browser only. Audio files are sent to the selected provider for transcription.</p><label class="tool-field">Model<select id="atsModel"></select></label><label class="tool-field">Spoken language<select id="atsLanguage"></select></label><label class="tool-field">Vocabulary hint<textarea id="atsPrompt" rows="2" placeholder="Names, brands or technical terms in the recording"></textarea></label><div class="split-options"><div class="split-option"><label>Subtitle line length <strong id="atsCharsValue">42</strong></label><input id="atsChars" type="range" min="20" max="80" value="42"></div><div class="split-option"><label>Longest subtitle <strong id="atsDurValue">6 s</strong></label><input id="atsDur" type="range" min="2" max="12" step=".5" value="6"></div></div></details>
+   <details id="atsSettings" class="tool-card"><summary style="cursor:pointer;font-weight:750;font-size:13px">TRANSCRIPTION SETTINGS</summary><label class="tool-field">Service<select id="atsProvider"></select></label><label class="tool-field">API key<div class="tool-keyrow"><input id="atsKey" type="password" autocomplete="off" placeholder="Paste provider API key"><button id="atsShowKey" class="tool-btn" type="button">Show</button></div></label><p class="tool-hint">Your key is saved in this browser only. Audio files are sent to the selected provider for transcription.</p><label class="tool-field">Model<select id="atsModel"></select></label><label class="tool-field">Spoken language<select id="atsLanguage"></select></label><label class="tool-field">Vocabulary hint<textarea id="atsPrompt" rows="2" placeholder="Names, brands or technical terms in the recording"></textarea></label><div class="split-options"><div class="split-option"><label>Subtitle line length <strong id="atsCharsValue">42</strong></label><input id="atsChars" type="range" min="20" max="80" value="80"></div><div class="split-option"><label>Longest subtitle <strong id="atsDurValue">6 s</strong></label><input id="atsDur" type="range" min="2" max="12" step=".5" value="12"></div></div></details>
    <section id="atsResults" class="tool-card" hidden><h2>TRANSCRIPT RESULTS</h2><div id="atsNotes"></div><div id="atsResultTabs" class="tool-tabs"></div><textarea id="atsPreview" class="tool-preview" readonly></textarea><div class="tool-actions"><button id="atsCopy" class="tool-btn">Copy text</button><button id="atsDownloadOne" class="tool-btn primary">Download current file</button></div></section>
   </div>
  </div>
- <section class="tool-card"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong style="font-size:13px">Ready to transcribe?</strong><p class="tool-hint">Select your files, choose an output format and start processing.</p></div><div class="tool-actions" style="margin:0"><button id="atsStop" class="tool-btn" hidden>Stop</button><button id="atsRun" class="tool-btn primary">Transcribe audio</button></div></div><div id="atsProgressCard" class="ats-progress-inline" hidden><div class="tool-progress"><div id="atsProgressFill"></div></div><div id="atsProgressText" class="tool-status" aria-live="polite"></div></div><div id="atsToast" class="tool-toast" hidden role="status"></div></section>
+
 </section>
 
 <section id="splitterWorkspace" class="workspace-view tool-workspace">
@@ -438,4 +635,69 @@ $('exportBtn').addEventListener('click',async()=>{if(!state.cues.length){setStat
  }catch(err){console.error('[SRT Studio export failure]',err,err?.stack||'');const detail=typeof err==='string'?err:(err?.message||err?.name||JSON.stringify(err)||String(err));setStatus((fullDone?'Full video is ready. ':'')+'Export failed: '+detail,'error');$('exportTitle').textContent=fullDone?'Full video ready · Short failed.':'Export could not finish.'}finally{restoreExportCanvas();$('exportBtn').disabled=false;setTimeout(()=>setProgress(0,false),2500)}});
 
 resizeCanvas();renderCueList();drawFrame(0);
-</script><script src="engine.js"></script><script src="navigation.js"></script><script>(function(){["transcriberWorkspace","splitterWorkspace"].forEach(id=>{const root=document.getElementById(id);if(!root)return;root.querySelectorAll(".tool-card").forEach((card,index)=>{if(card.tagName==="DETAILS")return;const isOpen=root.id==="splitterWorkspace"?index===2:(index===0||card.id==="atsResults");let head=card.querySelector(":scope > h2, :scope > summary");if(!head&&card.querySelector(":scope > div > strong")){head=document.createElement("h2");head.textContent="TRANSCRIPTION";card.insertBefore(head,card.firstChild);}if(!head)return;card.classList.add("panel-collapsible");if(!isOpen)card.classList.add("is-collapsed");head.classList.add("panel-heading");head.setAttribute("role","button");head.setAttribute("tabindex","0");head.setAttribute("aria-expanded",String(isOpen));let body=document.createElement("div");body.className="panel-content";while(head.nextSibling)body.appendChild(head.nextSibling);card.appendChild(body);const toggle=()=>{const closed=card.classList.toggle("is-collapsed");head.setAttribute("aria-expanded",String(!closed));};head.addEventListener("click",toggle);head.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}});});});})();</script><script src="transcriber.js"></script><script src="splitter.js"></script><script src="audio-joiner.js"></script></body></html>
+</script><script src="engine.js"></script><script src="navigation.js"></script><script>(function(){
+ const desktop=window.matchMedia("(min-width: 781px)");
+ function setImagePanelDefaults(){
+  const root=document.getElementById("splitterWorkspace");if(!root)return;
+  root.querySelectorAll(".tool-card.panel-collapsible").forEach((card,index)=>{
+   const open=desktop.matches||index===0;card.classList.toggle("is-collapsed",!open);
+   const head=card.querySelector(":scope > .panel-heading");if(head)head.setAttribute("aria-expanded",String(open));
+  });
+ }
+ function initPanels(){
+  ["transcriberWorkspace","splitterWorkspace"].forEach(id=>{
+   const root=document.getElementById(id);if(!root)return;
+   root.querySelectorAll(".tool-card").forEach((card,index)=>{
+    if(card.tagName==="DETAILS")return;
+    const isImage=root.id==="splitterWorkspace";
+    const isOpen=isImage?(desktop.matches||index===0):(index===0||card.id==="atsResults");
+    let head=card.querySelector(":scope > h2, :scope > summary");
+    if(!head&&card.querySelector(":scope > div > strong")){head=document.createElement("h2");head.textContent="TRANSCRIPTION";card.insertBefore(head,card.firstChild);}
+    if(!head)return;
+    card.classList.add("panel-collapsible");card.classList.toggle("is-collapsed",!isOpen);
+    head.classList.add("panel-heading");head.setAttribute("role","button");head.setAttribute("tabindex","0");head.setAttribute("aria-expanded",String(isOpen));
+    const body=document.createElement("div");body.className="panel-content";while(head.nextSibling)body.appendChild(head.nextSibling);card.appendChild(body);
+    const toggle=()=>{const closed=card.classList.toggle("is-collapsed");head.setAttribute("aria-expanded",String(!closed));};
+    head.addEventListener("click",toggle);head.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}});
+   });
+  });
+  const joiner=document.getElementById("audioJoinerPanel");if(joiner)joiner.open=desktop.matches;
+  desktop.addEventListener("change",()=>{setImagePanelDefaults();if(joiner)joiner.open=desktop.matches;});
+ }
+ initPanels();
+})();</script><script src="transcriber.js"></script><script src="splitter.js"></script><script src="audio-joiner.js"></script></body></html><style>
+@media(min-width:781px){
+ #transcriberWorkspace .tool-layout{grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr);align-items:start}
+ #transcriberWorkspace .tool-layout>div{min-width:0}
+ #transcriberWorkspace .tool-layout>div:nth-child(2){display:grid;grid-template-columns:minmax(0,1fr);align-content:start}
+ #transcriberWorkspace .audio-joiner-card{margin:0 0 14px}
+}
+#audioJoinerPanel>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#audioJoinerPanel>summary::-webkit-details-marker{display:none}
+#audioJoinerPanel>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);flex:0 0 auto}
+#audioJoinerPanel:not([open])>summary::after{transform:rotate(-45deg)}
+#atsLaunchPanel{width:min(100%,780px);margin:20px auto 0;padding:16px}
+#atsLaunchPanel>.panel-heading{margin-bottom:0}
+#atsLaunchPanel>.panel-content{padding-top:2px}
+#atsLaunchPanel .ats-progress-inline{max-width:100%}
+#atsLaunchPanel .tool-hint{max-width:480px}
+@media(max-width:780px){#atsLaunchPanel{width:100%;margin:14px 0 0;padding:14px}}
+</style>
+<style>
+/* Keep transcription action grouped with the left-hand setup controls */
+#atsLaunchPanel{width:100%;max-width:none;margin:14px 0 0;padding:15px;align-self:start}
+#atsLaunchPanel>.panel-heading{margin-bottom:0}
+#atsLaunchPanel>.panel-content{padding-top:0}
+#atsLaunchPanel .ats-progress-inline{max-width:100%}
+@media(min-width:781px){
+ #transcriberWorkspace .tool-layout>div:first-child{display:flex;flex-direction:column;align-items:stretch}
+ #atsLaunchPanel{order:4}
+ /* Keep a useful preview visible while the remaining settings are clipped. */
+ .settings-panel.is-collapsed>.panel-head{min-height:58px;display:flex;align-items:center}
+ .settings-panel.is-collapsed>.panel-head h2{font-size:13px;letter-spacing:.5px}
+ .settings-panel.is-collapsed>.panel-body{display:block;max-height:168px;overflow:hidden;position:relative;padding-top:10px}
+ .settings-panel.is-collapsed>.panel-body::after{content:"";position:absolute;left:0;right:0;bottom:0;height:38px;background:linear-gradient(180deg,rgba(23,28,39,0),var(--panel));pointer-events:none}
+ .settings-panel.is-collapsed{min-height:0}
+}
+@media(max-width:780px){#atsLaunchPanel{margin:12px 0 0;padding:14px}}
+</style>

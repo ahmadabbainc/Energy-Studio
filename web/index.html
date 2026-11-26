@@ -330,6 +330,7 @@ button:not(.primary):hover,.tool-btn:not(.primary):hover{border-color:#65758c;ba
 
    <section class="tool-card"><h2>OUTPUT FORMATS</h2><div id="atsFormats" class="tool-chips"></div><p class="tool-hint">Sentence SRT creates one cue per sentence. Subtitle SRT and VTT create shorter, readable captions. Word-by-word SRT preserves individual word timings.</p></section>
    <section class="tool-card"><h2>CLEANUP</h2><label class="tool-check"><input id="atsFillers" type="checkbox" checked><span>Remove filler sounds<small>Um, uh, er and similar English fillers.</small></span></label><label class="tool-check"><input id="atsRepeats" type="checkbox" checked><span>Remove repeated short words<small>For example: “I I want” or “the the”.</small></span></label><label class="tool-check"><input id="atsSilence" type="checkbox" checked><span>Ignore words detected in silence<small>Filters words with very low audio energy.</small></span></label><label class="tool-field">Extra words to remove<input id="atsExtra" type="text" placeholder="Separate words with commas"></label></section>
+ <section id="atsLaunchPanel" class="tool-card ats-launch-panel"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong style="font-size:13px">Ready to transcribe?</strong><p class="tool-hint">Select your files, choose an output format and start processing.</p></div><div class="tool-actions" style="margin:0"><button id="atsStop" class="tool-btn" hidden>Stop</button><button id="atsRun" class="tool-btn primary">Transcribe audio</button></div></div><div id="atsProgressCard" class="ats-progress-inline" hidden><div class="tool-progress"><div id="atsProgressFill"></div></div><div id="atsProgressText" class="tool-status" aria-live="polite"></div></div><div id="atsToast" class="tool-toast" hidden role="status"></div></section>
   </div>
   <div>
    <details id="audioJoinerPanel" class="tool-card audio-joiner-card">
@@ -349,7 +350,7 @@ button:not(.primary):hover,.tool-btn:not(.primary):hover{border-color:#65758c;ba
    <section id="atsResults" class="tool-card" hidden><h2>TRANSCRIPT RESULTS</h2><div id="atsNotes"></div><div id="atsResultTabs" class="tool-tabs"></div><textarea id="atsPreview" class="tool-preview" readonly></textarea><div class="tool-actions"><button id="atsCopy" class="tool-btn">Copy text</button><button id="atsDownloadOne" class="tool-btn primary">Download current file</button></div></section>
   </div>
  </div>
- <section id="atsLaunchPanel" class="tool-card ats-launch-panel"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong style="font-size:13px">Ready to transcribe?</strong><p class="tool-hint">Select your files, choose an output format and start processing.</p></div><div class="tool-actions" style="margin:0"><button id="atsStop" class="tool-btn" hidden>Stop</button><button id="atsRun" class="tool-btn primary">Transcribe audio</button></div></div><div id="atsProgressCard" class="ats-progress-inline" hidden><div class="tool-progress"><div id="atsProgressFill"></div></div><div id="atsProgressText" class="tool-status" aria-live="polite"></div></div><div id="atsToast" class="tool-toast" hidden role="status"></div></section>
+
 </section>
 
 <section id="splitterWorkspace" class="workspace-view tool-workspace">
@@ -473,7 +474,7 @@ function resizeCanvas(){const d=dimensions();canvas.width=d.w;canvas.height=d.h;
 function stopPlayback(){state.playing=false;cancelAnimationFrame(state.raf);$('playBtn').textContent='▶ Play';if(!audio.paused)audio.pause()}
 function tick(){if(!state.playing)return;state.time=audio.src&&!audio.ended?audio.currentTime*1000:state.playOffset+(performance.now()-state.playStart);const currentImage=imageIndex(state.time,activeIndex(state.time));if(currentImage!==state._lastPreviewImageIndex){if(state._lastPreviewImageIndex>=0&&$('clipChangeSound').checked)playClipChangeSound();state._lastPreviewImageIndex=currentImage}if(state.time>=state.duration){state.time=state.duration;stopPlayback()}syncPreview();if(state.playing)state.raf=requestAnimationFrame(tick)}
 function togglePlay(){if(state.playing){state.playOffset=state.time;stopPlayback();return}if(!state.duration)return;if(state.time>=state.duration)state.time=0;state._lastPreviewImageIndex=imageIndex(state.time,activeIndex(state.time));if($('clipChangeSound').checked){const sfxContext=ensurePreviewSfx();if(sfxContext&&sfxContext.state==='suspended')sfxContext.resume().catch(()=>{})}state.playing=true;state.playOffset=state.time;state.playStart=performance.now();$('playBtn').textContent='Ⅱ Pause';if(audio.src){audio.currentTime=state.time/1000;audio.play().catch(()=>{})}state.raf=requestAnimationFrame(tick)}
-if(window.matchMedia('(min-width: 781px)').matches){document.querySelectorAll('.preview-panel,.settings-panel').forEach(panel=>{panel.classList.remove('is-collapsed');panel.querySelector('.panel-head')?.setAttribute('aria-expanded','true')})}
+if(window.matchMedia('(min-width: 781px)').matches){document.querySelectorAll('.preview-panel').forEach(panel=>{panel.classList.remove('is-collapsed');panel.querySelector('.panel-head')?.setAttribute('aria-expanded','true')})}
 document.querySelectorAll('.collapsible-panel').forEach(panel=>{const head=panel.querySelector('.panel-head');const alwaysToggle=panel.classList.contains('preview-panel')||panel.classList.contains('settings-panel');const toggle=()=>{if(alwaysToggle||window.matchMedia('(max-width: 780px)').matches){const closed=panel.classList.toggle('is-collapsed');head.setAttribute('aria-expanded',String(!closed))}};head.addEventListener('click',e=>{if(e.target.closest('button'))return;toggle()});head.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&(alwaysToggle||window.matchMedia('(max-width: 780px)').matches)){e.preventDefault();toggle()}})});
 $('playBtn').addEventListener('click',togglePlay);$('scrub').addEventListener('input',e=>{stopPlayback();setTime(+e.target.value)});audio.addEventListener('loadedmetadata',()=>{refreshDuration();syncPreview()});audio.addEventListener('ended',stopPlayback);
 $('srtInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{state.cues=parseSrt(await f.text());state.srtEdited=false;$('exportSrtBtn').classList.add('hidden');state.selected=-1;state.time=0;$('srtLabel').textContent=f.name;$('assetStatus').textContent='Loaded '+state.cues.length+' captions from '+f.name;renderCueList();syncPreview();setStatus(state.cues.length?'Imported '+state.cues.length+' captions.':'No valid subtitle cues found.',state.cues.length?'success':'error')}catch(err){setStatus('Could not read that SRT file.','error')}});
@@ -681,4 +682,19 @@ resizeCanvas();renderCueList();drawFrame(0);
 #atsLaunchPanel .ats-progress-inline{max-width:100%}
 #atsLaunchPanel .tool-hint{max-width:480px}
 @media(max-width:780px){#atsLaunchPanel{width:100%;margin:14px 0 0;padding:14px}}
+</style>
+<style>
+/* Keep transcription action grouped with the left-hand setup controls */
+#atsLaunchPanel{width:100%;max-width:none;margin:14px 0 0;padding:15px;align-self:start}
+#atsLaunchPanel>.panel-heading{margin-bottom:0}
+#atsLaunchPanel>.panel-content{padding-top:0}
+#atsLaunchPanel .ats-progress-inline{max-width:100%}
+@media(min-width:781px){
+ #transcriberWorkspace .tool-layout>div:first-child{display:flex;flex-direction:column;align-items:stretch}
+ #atsLaunchPanel{order:4}
+ .settings-panel.is-collapsed>.panel-head{min-height:66px;display:flex;align-items:center}
+ .settings-panel.is-collapsed>.panel-head h2{font-size:13px;letter-spacing:.5px}
+ .settings-panel.is-collapsed{min-height:66px}
+}
+@media(max-width:780px){#atsLaunchPanel{margin:12px 0 0;padding:14px}}
 </style>

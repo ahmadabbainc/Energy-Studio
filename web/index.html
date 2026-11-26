@@ -332,7 +332,7 @@ button:not(.primary):hover,.tool-btn:not(.primary):hover{border-color:#65758c;ba
    <section class="tool-card"><h2>CLEANUP</h2><label class="tool-check"><input id="atsFillers" type="checkbox" checked><span>Remove filler sounds<small>Um, uh, er and similar English fillers.</small></span></label><label class="tool-check"><input id="atsRepeats" type="checkbox" checked><span>Remove repeated short words<small>For example: “I I want” or “the the”.</small></span></label><label class="tool-check"><input id="atsSilence" type="checkbox" checked><span>Ignore words detected in silence<small>Filters words with very low audio energy.</small></span></label><label class="tool-field">Extra words to remove<input id="atsExtra" type="text" placeholder="Separate words with commas"></label></section>
   </div>
   <div>
-   <details class="tool-card" id="audioJoinerPanel" class="tool-card audio-joiner-card">
+   <details id="audioJoinerPanel" class="tool-card audio-joiner-card">
   <summary style="cursor:pointer;font-weight:750;font-size:13px">AUDIO JOINER</summary>
   <p class="tool-hint">Combine multiple audio files into one continuous track. This runs locally and does not affect your transcription files.</p>
   <div class="tool-layout" style="margin-top:12px">

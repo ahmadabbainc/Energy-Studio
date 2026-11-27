@@ -1,31 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Energy Studio armored helmet">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Iron Man inspired red and gold helmet">
   <defs>
-    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff6654"/><stop offset=".38" stop-color="#d91f25"/><stop offset="1" stop-color="#790d18"/></linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#fff0a0"/><stop offset=".34" stop-color="#f8c84c"/><stop offset=".72" stop-color="#d99522"/><stop offset="1" stop-color="#8f4d13"/></linearGradient>
-    <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e4ffff"/><stop offset=".45" stop-color="#64eaff"/><stop offset="1" stop-color="#1484d7"/></linearGradient>
-    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#596477"/><stop offset=".5" stop-color="#202a39"/><stop offset="1" stop-color="#0c111b"/></linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feGaussianBlur stdDeviation="9"/></filter>
+    <linearGradient id="armorRed" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff6557"/><stop offset=".32" stop-color="#e52b27"/><stop offset=".72" stop-color="#a80f1b"/><stop offset="1" stop-color="#650b16"/></linearGradient>
+    <linearGradient id="faceGold" x1=".12" y1="0" x2=".85" y2="1"><stop stop-color="#fff2b0"/><stop offset=".3" stop-color="#f9d66b"/><stop offset=".7" stop-color="#d99a2d"/><stop offset="1" stop-color="#9c5b1b"/></linearGradient>
+    <linearGradient id="eyeGlow" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f4ffff"/><stop offset=".5" stop-color="#8af2ff"/><stop offset="1" stop-color="#37a9ec"/></linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4a5361"/><stop offset="1" stop-color="#101722"/></linearGradient>
   </defs>
-  <ellipse cx="256" cy="467" rx="142" ry="18" fill="#000" opacity=".35" filter="url(#shadow)"/>
-  <path d="M256 28 382 68 448 158 432 335 383 426 256 486 129 426 80 335 64 158 130 68Z" fill="#080d16" stroke="#02050b" stroke-width="13" stroke-linejoin="round"/>
-  <path d="M256 38 374 76 432 160 417 324 373 407 256 464 139 407 95 324 80 160 138 76Z" fill="url(#red)" stroke="#ff8b72" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M138 78 256 48 374 78 344 151 256 174 168 151Z" fill="#ff8067" opacity=".32"/>
-  <path d="M95 161 171 151 194 208 151 266 104 298 86 251Z" fill="#8e111d" opacity=".65"/>
-  <path d="M417 161 341 151 318 208 361 266 408 298 426 251Z" fill="#8e111d" opacity=".65"/>
-  <path d="M169 151 256 174 343 151 327 245 301 330 256 399 211 330 185 245Z" fill="url(#gold)" stroke="#4b2813" stroke-width="10" stroke-linejoin="round"/>
-  <path d="M169 151 212 181 196 242 151 265 185 245Z" fill="#ffe17a" opacity=".72"/>
-  <path d="M343 151 300 181 316 242 361 265 327 245Z" fill="#a45d18" opacity=".55"/>
-  <path d="M185 218 239 232 218 253 164 247Z" fill="#101b2b" stroke="#402914" stroke-width="7" stroke-linejoin="round"/>
-  <path d="M327 218 273 232 294 253 348 247Z" fill="#101b2b" stroke="#402914" stroke-width="7" stroke-linejoin="round"/>
-  <path d="M181 226 225 237 211 244 170 239Z" fill="url(#blue)"/>
-  <path d="M331 226 287 237 301 244 342 239Z" fill="url(#blue)"/>
-  <path d="M256 175 238 258 256 281 274 258Z" fill="#b87420" stroke="#6d3d18" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M213 323 256 342 299 323 282 372 256 397 230 372Z" fill="#c57a1b" stroke="#6d3d18" stroke-width="7" stroke-linejoin="round"/>
-  <path d="M229 352 256 362 283 352 272 378 256 389 240 378Z" fill="#442b1e"/>
-  <path d="M143 91 174 80 198 88 164 105Z" fill="#ffb08a" opacity=".45"/>
-  <path d="M369 91 338 80 314 88 348 105Z" fill="#ffb08a" opacity=".3"/>
-  <path d="M117 307 153 286 171 323 150 385 132 367Z" fill="url(#red)" stroke="#76101a" stroke-width="5"/>
-  <path d="M395 307 359 286 341 323 362 385 380 367Z" fill="url(#red)" stroke="#76101a" stroke-width="5"/>
-  <path d="M185 402 256 439 327 402 302 430 256 451 210 430Z" fill="#8f121c" opacity=".85"/>
-  <path d="M256 28 382 68 448 158" fill="none" stroke="#ffb09a" stroke-width="5" opacity=".55" stroke-linecap="round"/>
+  <!-- Compact, smooth helmet silhouette -->
+  <path d="M256 24 C181 24 112 57 80 119 C58 162 58 222 70 285 L91 382 C99 423 135 454 177 470 L256 493 L335 470 C377 454 413 423 421 382 L442 285 C454 222 454 162 432 119 C400 57 331 24 256 24Z" fill="#080d15" stroke="#05080e" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M256 35 C185 35 123 66 93 123 C73 163 72 218 84 281 L104 375 C112 411 143 441 182 456 L256 479 L330 456 C369 441 400 411 408 375 L428 281 C440 218 439 163 419 123 C389 66 327 35 256 35Z" fill="url(#armorRed)" stroke="#ff8d76" stroke-width="4"/>
+  <!-- Crown and brow armor -->
+  <path d="M119 126 C150 74 201 51 256 51 C311 51 362 74 393 126 L365 169 L324 186 L256 170 L188 186 L147 169Z" fill="#b71920" opacity=".9"/>
+  <path d="M150 126 C181 88 218 72 256 72 C294 72 331 88 362 126 L337 158 L256 144 L175 158Z" fill="#f04436" opacity=".72"/>
+  <!-- Gold faceplate: broad forehead, angular cheek lines, tapered chin -->
+  <path d="M164 142 L256 158 L348 142 L337 250 L319 322 L286 397 L256 423 L226 397 L193 322 L175 250Z" fill="url(#faceGold)" stroke="#6e3d16" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M164 142 L256 158 L348 142 L337 186 L256 198 L175 186Z" fill="#fff0a1" opacity=".38"/>
+  <!-- Temple-to-cheek bevels -->
+  <path d="M175 186 L205 203 L194 292 L218 352 L198 319 L178 250Z" fill="#fff0a1" opacity=".48"/>
+  <path d="M337 186 L307 203 L318 292 L294 352 L314 319 L334 250Z" fill="#a7651b" opacity=".38"/>
+  <!-- Distinctive narrow, angled eye apertures -->
+  <path d="M174 224 L224 235 L209 257 L164 248Z" fill="#182332" stroke="#74451b" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M338 224 L288 235 L303 257 L348 248Z" fill="#182332" stroke="#74451b" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M175 231 L215 240 L207 248 L169 242Z" fill="url(#eyeGlow)"/>
+  <path d="M337 231 L297 240 L305 248 L343 242Z" fill="url(#eyeGlow)"/>
+  <!-- Nose bridge and cheek definition -->
+  <path d="M256 171 L241 267 L256 286 L271 267Z" fill="#d18b28" stroke="#86501c" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M187 279 L218 293 L230 337 L207 319Z" fill="#bd7924" opacity=".65"/>
+  <path d="M325 279 L294 293 L282 337 L305 319Z" fill="#a9651c" opacity=".55"/>
+  <!-- Mouth vent and strong chin plate -->
+  <path d="M215 347 L256 359 L297 347 L286 388 L256 410 L226 388Z" fill="#c78325" stroke="#754316" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M230 369 L256 375 L282 369 L276 382 L256 390 L236 382Z" fill="#442a1b"/>
+  <path d="M239 371 L256 374 L273 371" fill="none" stroke="#f5ca61" stroke-width="3" stroke-linecap="round"/>
+  <!-- Red cheek guards and side panels -->
+  <path d="M94 173 L144 157 L160 218 L145 296 L119 340 L104 277Z" fill="#bd1821" stroke="#7e101a" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M418 173 L368 157 L352 218 L367 296 L393 340 L408 277Z" fill="#bd1821" stroke="#7e101a" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M105 183 L132 174 L141 221 L124 272Z" fill="#ff806c" opacity=".32"/>
+  <path d="M407 183 L380 174 L371 221 L388 272Z" fill="#ff806c" opacity=".22"/>
+  <!-- Jawline rim -->
+  <path d="M120 367 C139 414 185 444 256 466 C327 444 373 414 392 367" fill="none" stroke="#6e0d18" stroke-width="9" stroke-linecap="round"/>
+  <path d="M153 88 C183 56 222 43 256 43" fill="none" stroke="#ffb09a" stroke-width="5" opacity=".55" stroke-linecap="round"/>
 </svg>

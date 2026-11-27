@@ -619,6 +619,7 @@ async function autoDownloadExports(fullVideo,shortVideo){
  if(fullVideo){$('downloadFullVideo').disabled=false;$('downloadFullVideo').textContent='Download full video again'}
  if(shortVideo){$('downloadAiShort').disabled=false;$('downloadAiShort').textContent='Download AI Short again'}
  $('videoDownloads').style.display='flex';
+ setStatus('Automatic downloads started. If Chrome asks, choose Allow for multiple downloads from Energy Studio.','success');
 }
 $('downloadFullVideo').addEventListener('click',()=>{if(state.pendingFullVideo)download(state.pendingFullVideo,'Energy-Studio-full-video-'+state.exportStamp+'.mp4')});$('downloadAiShort').addEventListener('click',()=>{if(state.pendingAiShort)download(state.pendingAiShort,'Energy-Studio-AI-Short-'+state.exportStamp+'.mp4')});
 async function generateShortOnly(){
